@@ -1,8 +1,6 @@
 from .normalize import normalize_email, normalize_phone, hash_email, hash_phone
 from .rows import Dropped, GOAL_COMPLETED_JOBS
 
-PAID_MICROSOFT = "Paid Microsoft"
-
 
 def _is_test_identity(row, test_emails, test_phones):
     ne = normalize_email(row.raw_email)
@@ -12,12 +10,12 @@ def _is_test_identity(row, test_emails, test_phones):
     return bool(phones & ({normalize_phone(p) for p in test_phones} - {None}))
 
 
-def filter_rows(rows, test_emails, test_phones):
+def filter_rows(rows, settings):
     kept, dropped = [], []
     for r in rows:
-        if r.campaign_category != PAID_MICROSOFT:
+        if r.campaign_category != settings.campaign_category:
             dropped.append(Dropped(r.goal, r.st_id, f"campaign category {r.campaign_category}: {r.campaign_name}"))
-        elif _is_test_identity(r, test_emails, test_phones):
+        elif _is_test_identity(r, settings.test_emails, settings.test_phones):
             dropped.append(Dropped(r.goal, r.st_id, "test identity"))
         elif r.goal == GOAL_COMPLETED_JOBS and not (r.value and r.value > 0):
             dropped.append(Dropped(r.goal, r.st_id, "no positive invoice value"))

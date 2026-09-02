@@ -3,17 +3,16 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .rows import ALL_GOALS, LEGACY_GOALS, parse_utc
+from .config import DEFAULT_INITIAL_WATERMARK
+from .rows import ALL_GOALS, parse_utc
 
-INITIAL_WATERMARK = "2026-06-29T01:13:57+00:00"
 
-
-def parse_result_rows(path):
+def parse_result_rows(path, settings):
     """Parse a Microsoft OCI result file (upload template + Status column)."""
     rows = []
     with open(path, newline="", encoding="utf-8-sig") as f:
         for rec in csv.reader(f):
-            if len(rec) < 7 or rec[1] not in ALL_GOALS + LEGACY_GOALS:
+            if len(rec) < 7 or rec[1] not in settings.known_result_names:
                 continue  # instruction/parameter/header rows
             # Try US format first, fall back to ISO 8601
             try:
@@ -21,16 +20,16 @@ def parse_result_rows(path):
             except ValueError:
                 ts = datetime.fromisoformat(rec[2].replace("Z", "+00:00")).astimezone(timezone.utc)
             rows.append({
-                "goal": rec[1], "ts": ts.isoformat(),
+                "goal": settings.goal_key(rec[1]) or rec[1], "ts": ts.isoformat(),
                 "email_hash": rec[5] or None, "phone_hash": rec[6] or None,
                 "status": rec[7].strip() if len(rec) > 7 and rec[7] else None,
             })
     return rows
 
 
-def seed_from_result_csv(path):
+def seed_from_result_csv(path, settings):
     entries = []
-    for r in parse_result_rows(path):
+    for r in parse_result_rows(path, settings):
         entries.append({"goal": r["goal"], "st_id": None, "ts": r["ts"],
                         "email_hash": r["email_hash"], "phone_hash": r["phone_hash"],
                         "campaign_name": None, "uploaded_on": "seed-june-2026",
@@ -39,17 +38,18 @@ def seed_from_result_csv(path):
 
 
 class Ledger:
-    def __init__(self, data=None):
+    def __init__(self, data=None, initial_watermark=DEFAULT_INITIAL_WATERMARK):
         data = data or {}
         wm = data.get("watermarks", {})
-        self.watermarks = {g: parse_utc(wm.get(g, INITIAL_WATERMARK)) for g in ALL_GOALS}
+        self.watermarks = {g: parse_utc(wm.get(g, initial_watermark)) for g in ALL_GOALS}
         self.uploaded = data.get("uploaded", [])
         self.pending_projects = data.get("pending_projects", [])
 
     @classmethod
-    def load(cls, path):
+    def load(cls, path, initial_watermark=DEFAULT_INITIAL_WATERMARK):
         p = Path(path)
-        return cls(json.loads(p.read_text())) if p.exists() else cls()
+        return (cls(json.loads(p.read_text()), initial_watermark) if p.exists()
+                else cls(initial_watermark=initial_watermark))
 
     def save(self, path):
         Path(path).parent.mkdir(parents=True, exist_ok=True)

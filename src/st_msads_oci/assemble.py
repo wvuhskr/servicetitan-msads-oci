@@ -38,12 +38,12 @@ def validate(rows, now=None):
             raise InvariantError(f"value on non-job goal (st id {r.st_id})")
 
 
-def assemble_csv(rows, path) -> int:
+def assemble_csv(rows, path, goal_names) -> int:
     lines = [PARAMS, HEADER]
     for r in sorted(rows, key=lambda x: x.ts):
         is_job = r.goal == GOAL_COMPLETED_JOBS
         lines.append(",".join([
-            getattr(r, "msclkid", None) or "", r.goal, format_time(r.ts),
+            getattr(r, "msclkid", None) or "", goal_names[r.goal], format_time(r.ts),
             f"{r.value:.2f}" if is_job else "",
             "USD" if is_job else "",
             r.email_hash or "", r.phone_hash or "",

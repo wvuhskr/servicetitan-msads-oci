@@ -1,5 +1,6 @@
 from st_msads_oci.rows import rows_from_payload, GOAL_BOOKED_JOB, GOAL_COMPLETED_JOBS
 from st_msads_oci.filter import filter_rows, attach_hashes
+from tests.conftest import make_settings
 
 PAYLOAD = {
     "generated_at": "2026-07-06T12:00:00Z",
@@ -13,7 +14,7 @@ PAYLOAD = {
         {"id": 11, "createdOn": "2026-07-01T14:05:00Z", "campaignId": 2,
          "customerName": "Google Person", "email": "g@x.com", "phones": []},
         {"id": 12, "createdOn": "2026-07-01T14:10:00Z", "campaignId": 1,
-         "customerName": "Art Vandelay", "email": "synthetic05@example.com", "phones": ["(555) 259-0002"]},
+         "customerName": "Art Vandelay", "email": "test.identity@example.com", "phones": ["(555) 555-0199"]},
         {"id": 13, "createdOn": "2026-07-01T14:15:00Z", "campaignId": 1,
          "customerName": "No Contact", "email": None, "phones": []},
     ],
@@ -28,8 +29,6 @@ PAYLOAD = {
          "customerName": "Lead Person", "email": "lead@x.com", "phones": []},
     ],
 }
-TEST_EMAILS = ["synthetic05@example.com"]
-TEST_PHONES = ["(555) 259-0002"]
 
 
 def test_rows_from_payload_counts_and_goals():
@@ -43,7 +42,7 @@ def test_rows_from_payload_counts_and_goals():
 
 def test_filter_keeps_only_paid_microsoft_web_real():
     rows = rows_from_payload(PAYLOAD)
-    kept, dropped = filter_rows(rows, TEST_EMAILS, TEST_PHONES)
+    kept, dropped = filter_rows(rows, make_settings())
     kept_ids = {r.st_id for r in kept}
     assert kept_ids == {10, 20, 21}  # 21 is call-origin, now kept (unlocked)
     reasons = {d.st_id: d.reason for d in dropped}
@@ -67,7 +66,7 @@ def test_filter_drops_completed_jobs_with_no_positive_invoice_value():
         ],
     }
     rows = rows_from_payload(payload)
-    kept, dropped = filter_rows(rows, TEST_EMAILS, TEST_PHONES)
+    kept, dropped = filter_rows(rows, make_settings())
     assert kept == []
     reasons = {d.st_id: d.reason for d in dropped}
     assert reasons[100] == "no positive invoice value"
@@ -76,7 +75,7 @@ def test_filter_drops_completed_jobs_with_no_positive_invoice_value():
 
 def test_attach_hashes():
     rows = rows_from_payload(PAYLOAD)
-    kept, _ = filter_rows(rows, TEST_EMAILS, TEST_PHONES)
+    kept, _ = filter_rows(rows, make_settings())
     hashed, failed = attach_hashes(kept)
     assert failed == []
     booking = next(r for r in hashed if r.st_id == 10)

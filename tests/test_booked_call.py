@@ -1,18 +1,22 @@
 """Booked-call goal (spec 2026-08-13): constant wiring, emission, tiering, e2e."""
-from st_msads_oci.ledger import Ledger, INITIAL_WATERMARK
-from st_msads_oci.rows import ALL_GOALS, GOAL_BOOKED_JOB_CALL, parse_utc
+from st_msads_oci.config import DEFAULT_GOAL_NAMES, DEFAULT_INITIAL_WATERMARK
+from st_msads_oci.ledger import Ledger
+from st_msads_oci.rows import (ALL_GOALS, GOAL_BOOKED_JOB, GOAL_COMPLETED_JOBS,
+                               GOAL_BOOKED_JOB_CALL, parse_utc)
+from tests.conftest import make_settings
 
 
 def test_goal_string_exact():
-    # CSV Conversion Name and the MS Ads goal must match this byte-for-byte
-    assert GOAL_BOOKED_JOB_CALL == "ServiceTitan Booked Job (Call) - MS"
+    # The goal is now identified by a stable key; the byte-exact MS display name is
+    # applied only at the CSV seam (see test_golden_csv_row).
+    assert GOAL_BOOKED_JOB_CALL == "booked_call"
     assert GOAL_BOOKED_JOB_CALL in ALL_GOALS
 
 
 def test_new_goal_watermark_defaults_to_initial():
-    # Absent from a ledger file -> INITIAL_WATERMARK -> full backfill (decision A)
+    # Absent from a ledger file -> DEFAULT_INITIAL_WATERMARK -> full backfill (decision A)
     led = Ledger({"watermarks": {}})
-    assert led.watermarks[GOAL_BOOKED_JOB_CALL] == parse_utc(INITIAL_WATERMARK)
+    assert led.watermarks[GOAL_BOOKED_JOB_CALL] == parse_utc(DEFAULT_INITIAL_WATERMARK)
 
 
 def test_watermark_roundtrips_through_save_load(tmp_path):
@@ -113,7 +117,7 @@ def test_booked_call_ambiguous_pool_lands_tier_b():
 
 def test_website_goal_with_pii_still_gated():
     # regression: the carve-out must NOT loosen the gate for other goals
-    r = _call_row(goal="ServiceTitan Booked Job (Website) - MS")
+    r = _call_row(goal=GOAL_BOOKED_JOB)
     got = find_msclkid(r, _mapping(["mclk_call_1"]), CALLS_BY_ID)
     assert got == (None, None, "no_session_captured")
 
@@ -128,7 +132,7 @@ NOW = datetime(2026, 8, 13, 12, 0, 0, tzinfo=timezone.utc)
 
 
 def test_value_none_passes_filter_and_validate():
-    kept, dropped = filter_rows([_call_row(email_hash=None)], [], [])
+    kept, dropped = filter_rows([_call_row(email_hash=None)], make_settings())
     assert len(kept) == 1 and not dropped     # $0 gate is Completed-Jobs-keyed
     kept, failed = attach_hashes(kept)
     assert len(kept) == 1
@@ -146,17 +150,17 @@ def test_value_set_on_booked_call_raises():
 def test_dedupe_same_call_id_and_cross_goal_survival():
     led = Ledger({})
     a, b = _call_row(), _call_row()            # same (goal, st_id)
-    completed = _call_row(goal="ServiceTitan Completed Jobs - MS", value=500.0)
+    completed = _call_row(goal=GOAL_COMPLETED_JOBS, value=500.0)
     kept, dropped = dedupe([a, b, completed], led)
     assert {(r.goal, r.st_id) for r in kept} == {
         (GOAL_BOOKED_JOB_CALL, 110000001),
-        ("ServiceTitan Completed Jobs - MS", 110000001)}  # different goals both survive
+        (GOAL_COMPLETED_JOBS, 110000001)}  # different goals both survive
     assert dropped[0].reason == "duplicate within run (st id)"
 
 
 def test_golden_csv_row(tmp_path):
     rows = rows_from_payload(_payload([BOOKED_CALL]))
-    kept, _ = filter_rows(rows, [], [])
+    kept, _ = filter_rows(rows, make_settings())
     kept, _ = attach_hashes(kept)
     kept, _ = dedupe(kept, Ledger({}))
     tier_a, tier_b, withheld = tier_rows(kept, {"ids": {}, "dni": {}, "forms": []},
@@ -164,7 +168,7 @@ def test_golden_csv_row(tmp_path):
     assert len(tier_b) == 1 and not tier_a and not withheld   # backfill shape: tier B PII
     validate(tier_b, now=NOW)
     out = tmp_path / "oci-pii.csv"
-    assemble_csv(tier_b, out)
+    assemble_csv(tier_b, out, DEFAULT_GOAL_NAMES)
     line = out.read_text().splitlines()[2]     # params, header, row
     cols = line.split(",")
     assert cols[1] == "ServiceTitan Booked Job (Call) - MS"   # byte-exact goal name

@@ -30,7 +30,7 @@ PAYLOAD = {
          "customerName": "G Person", "email": "g@x.com", "phones": []},
         # test identity -> dropped
         {"id": 13, "createdOn": "2026-07-01T14:03:00Z", "campaignId": 1,
-         "customerName": "Art Vandelay", "email": "synthetic05@example.com", "phones": []},
+         "customerName": "Art Vandelay", "email": "test.identity@example.com", "phones": []},
     ],
     "jobs": [
         {"id": 20, "completedOn": "2026-07-02T15:00:00Z", "campaignId": 1, "customerName": "Web Job",
@@ -46,7 +46,7 @@ def run_cli(project_dir, payload_path, now="2026-07-06T12:00:00Z"):
     secrets_path = project_dir / "secrets.env"
     if not secrets_path.exists():
         secrets_path.write_text("OCI_WORKER_URL=https://example.invalid\nOCI_WORKER_BEARER=x\n"
-                                 "OCI_EMAIL_TO=synthetic00@example.com\n")
+                                 "OCI_EMAIL_TO=alerts@example.com\n")
     map_path = project_dir / "oci_map.json"
     if not map_path.exists():
         map_path.write_text(json.dumps({"ids": {}, "dni": {}, "forms": []}))
@@ -83,7 +83,7 @@ def test_end_to_end_and_idempotency(tmp_path):
     assert summary2["tier_a"] == 0 and summary2["tier_b"] == 0 and summary2["withheld"] == 0
     # watermarks advanced
     ledger = json.loads((tmp_path / "state" / "ledger.json").read_text())
-    assert ledger["watermarks"]["ServiceTitan Completed Jobs - MS"].startswith("2026-07-02T15:30")
+    assert ledger["watermarks"]["completed_jobs"].startswith("2026-07-02T15:30")
 
 
 def test_contactless_call_origin_row_withheld_not_validated(tmp_path):
@@ -234,7 +234,7 @@ def test_project_rollup_end_to_end(tmp_path):
     entry = next(e for e in ledger["uploaded"] if e.get("project_id") == 5001)
     assert entry["st_id"] == 200 and entry["member_job_ids"] == [200, 201]
     # watermark still advances on job completedOn (install leg, 8/2) — unchanged semantics
-    assert ledger["watermarks"]["ServiceTitan Completed Jobs - MS"].startswith("2026-08-02T10:00")
+    assert ledger["watermarks"]["completed_jobs"].startswith("2026-08-02T10:00")
     assert ledger["pending_projects"] == []
     # second run: ledger blocks the project (id + members)
     result2 = run_cli(tmp_path, payload_path, now="2026-08-03T12:00:00Z")

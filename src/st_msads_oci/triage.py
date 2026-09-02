@@ -43,7 +43,7 @@ def _match_ledger_entry(ledger, r):
     return None
 
 
-def run_triage(ledger, inbox_dir, downloads_dir, archive_dir, history_path, parsed_on):
+def run_triage(ledger, inbox_dir, downloads_dir, archive_dir, history_path, parsed_on, settings):
     findings = []
     history_path = Path(history_path)
     processed = set()
@@ -58,9 +58,9 @@ def run_triage(ledger, inbox_dir, downloads_dir, archive_dir, history_path, pars
                     z.extractall(tmp)
                 rows = []
                 for csv_path in sorted(tmp.glob("*.csv")):
-                    rows.extend(parse_result_rows(csv_path))
+                    rows.extend(parse_result_rows(csv_path, settings))
             else:
-                rows = parse_result_rows(path)
+                rows = parse_result_rows(path, settings)
             stats = defaultdict(lambda: [0, 0])  # (goal, ctype) -> [uploaded, success]
             by_status = defaultdict(int)
             for r in rows:

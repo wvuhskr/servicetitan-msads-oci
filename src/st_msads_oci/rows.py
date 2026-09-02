@@ -2,12 +2,10 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 
-GOAL_COMPLETED_JOBS = "ServiceTitan Completed Jobs - MS"
-GOAL_BOOKED_JOB = "ServiceTitan Booked Job (Website) - MS"
-GOAL_BOOKED_JOB_CALL = "ServiceTitan Booked Job (Call) - MS"
+GOAL_COMPLETED_JOBS = "completed_jobs"
+GOAL_BOOKED_JOB = "booked_web"
+GOAL_BOOKED_JOB_CALL = "booked_call"
 ALL_GOALS = (GOAL_COMPLETED_JOBS, GOAL_BOOKED_JOB, GOAL_BOOKED_JOB_CALL)
-# Old goal names — still needed to parse historical MS result files in triage
-LEGACY_GOALS = ("ServiceTitan Integrated Bookings - MS", "ServiceTitan Lead - MS")
 
 
 def parse_utc(ts: str) -> datetime:
@@ -120,7 +118,7 @@ def _infer_lead_call(proxy, jobs, calls):
     return min(cands, key=lambda c: parse_utc(c["receivedOn"])) if cands else None
 
 
-def _recover_suspect(pid, jobs, camps, calls, value, now):
+def _recover_suspect(pid, jobs, camps, calls, value, now, campaign_category):
     """Fallback ladder for settled Paid-MS projects with no lead-marked job (spec 2026-08-05).
 
     Returns (row, finding), (None, finding) for report-once-and-drop, or (None, None)
@@ -128,8 +126,8 @@ def _recover_suspect(pid, jobs, camps, calls, value, now):
     proxy = min((j for j in jobs if j["jobStatus"] == "Completed"),
                 key=lambda j: parse_utc(j["createdOn"]))
     c = camps.get(proxy.get("campaignId"), {})
-    if c.get("category") != "Paid Microsoft":
-        return None, (f"project {pid}: attribution_suspect on non-MS campaign — "
+    if c.get("category") != campaign_category:
+        return None, (f"project {pid}: attribution_suspect on non-{campaign_category} campaign — "
                       f"reported once, dropped")
     call = _infer_lead_call(proxy, jobs, calls)
     # spec: the customer is identical across a project's legs, so PII landing on a
@@ -154,7 +152,7 @@ def _recover_suspect(pid, jobs, camps, calls, value, now):
     return row, f"project {pid}: suspect_recovered_{via} — recovery row built (tier {'A' if via == 'call' else 'B'})"
 
 
-def project_rows_from_payload(payload, ledger, now, today):
+def project_rows_from_payload(payload, ledger, now, today, campaign_category):
     """One UploadRow per settled project, keyed and timed by its lead job (spec 2026-08-03).
 
     Returns (rows, member_job_ids, findings, dropped). Mutates ledger.pending_projects.
@@ -220,7 +218,7 @@ def project_rows_from_payload(payload, ledger, now, today):
             if lead is None:
                 # spec 2026-08-05 fallback ladder: call inference -> PII -> withhold+pend
                 row, finding = _recover_suspect(pid, jobs, camps, payload.get("calls", []),
-                                                value, now)
+                                                value, now, campaign_category)
                 if finding:
                     findings.append(finding)
                 else:

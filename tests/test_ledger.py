@@ -1,14 +1,17 @@
 from datetime import timedelta
-from st_msads_oci.ledger import Ledger, seed_from_result_csv, parse_result_rows, INITIAL_WATERMARK
-from st_msads_oci.rows import GOAL_COMPLETED_JOBS, LEGACY_GOALS, parse_utc
+from st_msads_oci.config import DEFAULT_INITIAL_WATERMARK
+from st_msads_oci.ledger import Ledger, seed_from_result_csv, parse_result_rows
+from st_msads_oci.rows import GOAL_COMPLETED_JOBS, parse_utc
+from tests.conftest import make_settings
 
 JUNE = "tests/fixtures/june_result.csv"
-GOAL_BOOKINGS = LEGACY_GOALS[0]  # "ServiceTitan Integrated Bookings - MS" — legacy, still present in old result files
-GOAL_LEAD = LEGACY_GOALS[1]
+_LEGACY = make_settings().legacy_goal_names
+GOAL_BOOKINGS = _LEGACY[0]  # "ServiceTitan Integrated Bookings - MS" — legacy, still present in old result files
+GOAL_LEAD = _LEGACY[1]
 
 
 def test_parse_result_rows_counts():
-    rows = parse_result_rows(JUNE)
+    rows = parse_result_rows(JUNE, make_settings())
     assert len(rows) == 29
     assert sum(1 for r in rows if r["status"] == "Success") == 7
     assert {r["goal"] for r in rows} == {GOAL_BOOKINGS, GOAL_COMPLETED_JOBS, GOAL_LEAD}
@@ -16,7 +19,7 @@ def test_parse_result_rows_counts():
 
 def test_seed_and_identity_recent():
     ledger = Ledger()
-    ledger.uploaded = seed_from_result_csv(JUNE)
+    ledger.uploaded = seed_from_result_csv(JUNE, make_settings())
     assert len(ledger.uploaded) == 29
     # known June booking (6/26/2026 3:39:52 AM UTC), synthesized hashes from the June file
     # (sha256("user16@example.com") / sha256("+15555550016"), row 16 of 29 ServiceTitan rows)
@@ -31,17 +34,17 @@ def test_seed_and_identity_recent():
 def test_save_load_roundtrip(tmp_path):
     p = tmp_path / "ledger.json"
     ledger = Ledger()
-    ledger.uploaded = seed_from_result_csv(JUNE)
+    ledger.uploaded = seed_from_result_csv(JUNE, make_settings())
     ledger.save(p)
     again = Ledger.load(p)
     assert len(again.uploaded) == 29
-    assert again.watermarks[GOAL_COMPLETED_JOBS] == parse_utc(INITIAL_WATERMARK)
+    assert again.watermarks[GOAL_COMPLETED_JOBS] == parse_utc(DEFAULT_INITIAL_WATERMARK)
 
 
 def test_load_missing_file_gives_initial_watermarks(tmp_path):
     ledger = Ledger.load(tmp_path / "nope.json")
     assert ledger.uploaded == []
-    assert ledger.watermarks[GOAL_COMPLETED_JOBS] == parse_utc(INITIAL_WATERMARK)
+    assert ledger.watermarks[GOAL_COMPLETED_JOBS] == parse_utc(DEFAULT_INITIAL_WATERMARK)
 
 
 def test_parse_result_rows_iso_timestamp_format(tmp_path):
@@ -51,7 +54,7 @@ def test_parse_result_rows_iso_timestamp_format(tmp_path):
     csv_content = """,ServiceTitan Integrated Bookings - MS,2026-06-10T06:10:56Z,,,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb,Success"""
     csv_path.write_text(csv_content)
 
-    rows = parse_result_rows(csv_path)
+    rows = parse_result_rows(csv_path, make_settings())
     assert len(rows) == 1
     assert rows[0]["goal"] == GOAL_BOOKINGS
     assert rows[0]["ts"] == "2026-06-10T06:10:56+00:00"

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import certifi
 
-from .rows import GOAL_BOOKED_JOB_CALL, Dropped, parse_utc
+from .rows import GOAL_BOOKED_JOB, GOAL_BOOKED_JOB_CALL, Dropped, parse_utc
 
 # ponytail: window is NOT the binding constraint on call-tier joins for ordinary rows — the
 # identity gate in find_msclkid() is. Any row carrying an email or phone hash short-circuits to
@@ -28,13 +28,11 @@ from .rows import GOAL_BOOKED_JOB_CALL, Dropped, parse_utc
 POOL_WINDOW_H = 2   # tuned 2026-07-30: live /map showed median DNI re-bind 133m; 72h made every call pool_ambiguous
 PROXIMITY_S = 120
 
-GOAL_BOOKED_JOB_NAME = "ServiceTitan Booked Job (Website) - MS"
-
 
 def fetch_map(base_url, bearer, timeout=30):
     """Raises on any failure — the caller must abort the run rather than build empty Click Ids."""
     req = urllib.request.Request(base_url.rstrip("/") + "/map",
-                                 headers={"Authorization": f"Bearer {bearer}", "User-Agent": "ms-oci-upload/1.0"})
+                                 headers={"Authorization": f"Bearer {bearer}", "User-Agent": "servicetitan-msads-oci/1.0"})
     ctx = ssl.create_default_context(cafile=certifi.where())
     with urllib.request.urlopen(req, timeout=timeout, context=ctx) as r:
         return json.loads(r.read().decode("utf-8"))
@@ -47,7 +45,7 @@ def publish_file(base_url, bearer, name, path, timeout=30):
     req = urllib.request.Request(base_url.rstrip("/") + f"/f/{name}", data=body, method="PUT",
                                  headers={"Authorization": f"Bearer {bearer}",
                                           "Content-Type": "text/csv",
-                                          "User-Agent": "ms-oci-upload/1.0"})
+                                          "User-Agent": "servicetitan-msads-oci/1.0"})
     ctx = ssl.create_default_context(cafile=certifi.where())
     with urllib.request.urlopen(req, timeout=timeout, context=ctx) as r:
         return r.status == 204
@@ -96,7 +94,7 @@ def find_msclkid(row, mapping, calls_by_id):
             if len(cands) > 1:
                 return None, None, "pool_ambiguous"
 
-    if row.goal == GOAL_BOOKED_JOB_NAME:   # submit-time ≈ createdOn only holds for web bookings
+    if row.goal == GOAL_BOOKED_JOB:   # submit-time ≈ createdOn only holds for web bookings
         cands = set()
         for f in mapping.get("forms", []):
             if f.get("m") and abs((parse_utc(f["ts"]) - row.ts).total_seconds()) <= PROXIMITY_S:

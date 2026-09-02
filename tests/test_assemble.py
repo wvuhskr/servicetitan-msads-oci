@@ -1,6 +1,7 @@
 import pytest
 from datetime import timedelta, datetime, timezone
 from st_msads_oci.assemble import assemble_csv, validate, format_time, InvariantError
+from st_msads_oci.config import DEFAULT_GOAL_NAMES
 from st_msads_oci.rows import UploadRow, GOAL_BOOKED_JOB, GOAL_COMPLETED_JOBS, parse_utc
 
 
@@ -19,7 +20,7 @@ def test_golden_csv(tmp_path):
     rows = [row(GOAL_BOOKED_JOB, "2026-07-01T14:00:00Z"),
             row(GOAL_COMPLETED_JOBS, "2026-07-02T15:30:00Z", value=1234.5)]
     out = tmp_path / "u.csv"
-    assemble_csv(rows, out)
+    assemble_csv(rows, out, DEFAULT_GOAL_NAMES)
     assert out.read_text() == (
         "Parameters:TimeZone=+0000\n"
         "Microsoft Click Id,Conversion Name,Conversion Time,Conversion Value,Conversion Currency,"
@@ -33,7 +34,7 @@ def test_click_id_written_when_present(tmp_path):
     r = row(GOAL_BOOKED_JOB, "2026-07-01T14:00:00Z")
     r.msclkid = "abc123xyz"
     p = tmp_path / "out.csv"
-    assemble_csv([r], p)
+    assemble_csv([r], p, DEFAULT_GOAL_NAMES)
     line = p.read_text().splitlines()[2]
     assert line.startswith("abc123xyz,")
 

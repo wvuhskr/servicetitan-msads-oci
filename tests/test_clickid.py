@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from st_msads_oci.clickid import find_msclkid, tier_rows, POOL_WINDOW_H, PROXIMITY_S
-from st_msads_oci.rows import UploadRow, GOAL_COMPLETED_JOBS, parse_utc
+from st_msads_oci.rows import UploadRow, GOAL_BOOKED_JOB, GOAL_COMPLETED_JOBS, parse_utc
 
 MAPPING = json.loads((Path(__file__).parent / "fixtures" / "clickid_map.json").read_text())
 E = "a" * 64
@@ -11,7 +11,7 @@ P = "b" * 64
 TS = datetime(2026, 7, 22, 15, 0, 30, tzinfo=timezone.utc)
 
 def row(**kw):
-    d = dict(goal="ServiceTitan Booked Job (Website) - MS", st_id=1, ts=TS, campaign_id=1,
+    d = dict(goal=GOAL_BOOKED_JOB, st_id=1, ts=TS, campaign_id=1,
              campaign_name="x", campaign_category="Paid Microsoft", customer_name="c",
              raw_email=None, raw_phones=[], lead_call_id=None, booking_id=None,
              email_hash=None, phone_hash=None, value=None)
