@@ -1,0 +1,9 @@
+{
+  "name": "st-msads-oci-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/",
+    "deploy": "wrangler deploy"
+  }
+}
