@@ -1,0 +1,26 @@
+# Copy to accounts.yaml and edit. No secrets here — those go in .env (see .env.example).
+servicetitan:
+  tenant_id: "YOUR_TENANT_ID"
+  # The ServiceTitan campaign *category* name your Microsoft Ads campaigns are filed under.
+  # Only rows whose campaign has this category are uploaded; everything else is dropped.
+  campaign_category: "Paid Microsoft"
+microsoft_ads:
+  # Must match the offline conversion goal names you created in Microsoft Ads exactly.
+  goal_names:
+    completed_jobs: "ServiceTitan Completed Jobs - MS"
+    booked_web: "ServiceTitan Booked Job (Website) - MS"
+    booked_call: "ServiceTitan Booked Job (Call) - MS"
+  legacy_goal_names: []   # old goal names still present in Microsoft result files, if any
+worker:
+  url: "https://oci.example.com"   # your deployed Cloudflare Worker
+# First run pulls ServiceTitan data from this instant forward (UTC ISO). Microsoft rejects
+# conversions older than your goal's click window (usually 90 days) — don't go back further.
+initial_watermark: "2026-01-01T00:00:00+00:00"
+test_identities:            # your own test bookings, never uploaded
+  emails: []
+  phones: []
+notifications:              # all optional; the run summary always prints and is written to output/summary-latest.json
+  # - type: webhook          # Slack / Teams incoming webhook; URL read from this env var
+  #   url_env: NOTIFY_WEBHOOK_URL
+  # - type: smtp             # any SMTP server; SMTP_* env vars
+  # - type: graph            # Microsoft 365 Graph sendMail; GRAPH_* env vars
