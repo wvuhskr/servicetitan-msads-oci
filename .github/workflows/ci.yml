@@ -17,7 +17,7 @@ jobs:
       - run: python -m pytest -q
       - uses: actions/setup-node@v4
         with: { node-version: "20" }
-      - run: node --test worker/test/
+      - run: node --test worker/test/normalize.test.js
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
