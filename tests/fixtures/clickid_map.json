@@ -1,0 +1,15 @@
+{
+  "ids": {
+    "e:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": {"m": "click_email", "ts": "2026-07-20T10:00:00Z"},
+    "p:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb": {"m": "click_phone", "ts": "2026-07-20T11:00:00Z"},
+    "p10:5555550111": {"m": "click_p10", "ts": "2026-07-20T12:00:00Z"}
+  },
+  "dni": {
+    "5552596637": [{"m": "click_call", "ts": "2026-07-21T09:00:00Z"}],
+    "5552596681": [{"m": "click_x", "ts": "2026-07-21T09:00:00Z"}, {"m": "click_y", "ts": "2026-07-21T10:00:00Z"}]
+  },
+  "forms": [
+    {"m": "click_prox", "ts": "2026-07-22T15:00:00Z"},
+    {"m": null, "ts": "2026-07-22T16:00:00Z"}
+  ]
+}

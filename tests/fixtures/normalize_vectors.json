@@ -1,0 +1,17 @@
+[
+  {"kind":"email","raw":"Marisol.Ortega@Yahoo.com","normalized":"marisolortega@yahoo.com"},
+  {"kind":"email","raw":"  J.o.h.n.Doe@Gmail.com ","normalized":"john@gmail.com"},
+  {"kind":"email","raw":"JOSÉ.garcía@Example.COM","normalized":"josegarcia@example.com"},
+  {"kind":"email","raw":"a b@c.com","normalized":"ab@c.com"},
+  {"kind":"email","raw":"+only@x.com","normalized":null},
+  {"kind":"email","raw":"no-at-sign.com","normalized":null},
+  {"kind":"email","raw":"a@b@c.com","normalized":null},
+  {"kind":"email","raw":"","normalized":null},
+  {"kind":"phone","raw":"(555) 259-6637","normalized":"+15552596637"},
+  {"kind":"phone","raw":"1-555-259-6637","normalized":"+15552596637"},
+  {"kind":"phone","raw":"+1 555 259 6637","normalized":"+15552596637"},
+  {"kind":"phone","raw":"555.259.6637","normalized":"+15552596637"},
+  {"kind":"phone","raw":"259-6637","normalized":null},
+  {"kind":"phone","raw":"+44 20 7946 0958","normalized":null},
+  {"kind":"phone","raw":"","normalized":null}
+]

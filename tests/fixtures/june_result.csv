@@ -1,0 +1,37 @@
+### INSTRUCTIONS ###,,,,
+"# Important: Remember to change the TimeZone value (GMT offset) in the ""parameters"" row",,,,
+# TimeZone values should be entered in HHMM format (e.g. New York is -0500. Berlin's is +0100 etc. If you use Greenwich Mean Time, simply enter +0000.),,,,
+# Make sure you do not include additional columns. For more instructions on how to use this tempate, visit https://aka.ms/dk8o1y,,,,
+,,,,
+### TEMPLATE ###,,,,
+Parameters:TimeZone=+0000,,,,
+Microsoft Click Id,Conversion Name,Conversion Time,Conversion Value,Conversion Currency,Hashed Email Address,Hashed Phone Number,Status
+,ServiceTitan Completed Jobs - MS,6/24/2026 2:20:16 AM,101.00,USD,57e0579c2f5d95fd2076484d9c7d957715a077878466a71ae380a74cd2d952da,0535c21d73f1dbea22e9e5df840b50b928c5b49a1414f6139234e3c4d814a187,Unattributed Reason: Click not found
+,ServiceTitan Completed Jobs - MS,6/22/2026 2:40:19 PM,102.00,USD,deb4a001951ebab53565315ce0e93da1869faff362182f2acd2ebbcc962c2534,9e801941043db9db14cbb652814fdd36179ca3a56db85bf2865244b66c5d6b9d,Success
+,ServiceTitan Completed Jobs - MS,6/27/2026 7:41:37 PM,103.00,USD,f7d46d374ef0df3396fd26464bfc5b599af81508e188458fd875c34a1cff0b67,12f4d589df038979db7d99204d1af2e2f05d67a1e2efd7a8d56cef3afcdd7d01,Success
+,ServiceTitan Integrated Bookings - MS,6/22/2026 4:34:53 PM,,,d1eb2f612cc65a189f9140633ff35da5f8abf388a12fcbe2a1c146bc8bc9c0fb,91bea2e62589c0ab51fe48c1b89e95551270186d16afff6de902b4aee338fe7e,Unattributed Reason:ClickId and stableId are null
+,ServiceTitan Integrated Bookings - MS,6/22/2026 9:02:37 PM,,,7267dfab96f06ee0cbd3affd23ec61d8124cc3b37ac4d5b099c3960623c5038c,dc30e4e86e0022414268a03603d1489141880939e487d5736166798d804f2409,Unattributed Reason: Click not found
+,ServiceTitan Integrated Bookings - MS,6/22/2026 11:23:24 PM,,,2df5e10484693ceacf0a8f1f9d7a2025652175a46d282095f78e6b86c2fc3650,a057deb40c6dcfe5df2b91dbaa9ec22b7ae9e4e0722dafa2583f1fa81e614b27,Unattributed Reason:ClickId and stableId are null
+,ServiceTitan Integrated Bookings - MS,6/23/2026 9:39:28 PM,,,b2f601d02666f6e3b1bed3fb6a9b146e6b64ebba4c535af8b12868b28f4f2d1c,fe6f11cc723db1a6f5aaf5144b071068ccea883f2fddb1723c0c17c1f7a2bb6b,Unattributed Reason: Click not found
+,ServiceTitan Integrated Bookings - MS,6/24/2026 2:55:57 AM,,,ec745e12203369ee4c5700e36fd5ce2cf13c2244ac76cd67d0faa58c5473d741,5b60c1960036887a96e421c14569fb5325ef8e8405cc5f07caa044d70a325703,Unattributed Reason: Click not found
+,ServiceTitan Integrated Bookings - MS,6/24/2026 5:05:31 AM,,,684d7c509a6a92a489a3e775b33cf06c20912beb19be21cd3c8dd79c1fb6f7c0,6c91f3b1e2ef289f0fe4c0d6eed566ab43e3ce3200e7cc148c62cb95ed71b832,Success
+,ServiceTitan Integrated Bookings - MS,6/24/2026 5:39:08 PM,,,7243e65b206bff18dec9d11f4e9853493fad54881e1bac090932ca2813ac2fa6,3cf11476a7cbf2eccfdc4386989f3b2213e0978af957f133ead6ae912f270786,Unattributed Reason: Click not found
+,ServiceTitan Integrated Bookings - MS,6/25/2026 12:03:40 AM,,,9835e078fa73052cd84e3b6542ab27f0574b96c252a834cad97193c88268b4c2,bdaa353cfc3a35d24cf9d341527c8f4fd23f470b92d02bfb96d500a4afb740b2,Unattributed Reason: Click not found
+,ServiceTitan Integrated Bookings - MS,6/25/2026 12:12:17 AM,,,302c7bbc74b1fa43fac4f6bdf83f551ea9436c807803f4ddc167232689095275,92b632523cba152aaa8c46fe69f887b2b0e1caa3407abf43a17b9156895efe50,Unattributed Reason: Click not found
+,ServiceTitan Integrated Bookings - MS,6/25/2026 1:09:18 AM,,,96603e66a1fd92507e5209aec2d9e747f4b7a8213f434132c94d58629ffca0a5,13361a41ba024474a8aa3dbb00127701961386b9c4f2d55ce70b498318c3deee,Unattributed Reason: Click not found
+,ServiceTitan Integrated Bookings - MS,6/25/2026 3:31:34 AM,,,5e5eb05574e170f7a3c9a800d82129a0afc9c3491f9ed2efb3f903bc5f8c4445,3c22429e6ffdd1cc3c56121ecf78c3bec437c52a6d3ad6144b3bc444a26f9f33,Unattributed Reason: Click not found
+,ServiceTitan Integrated Bookings - MS,6/26/2026 3:31:38 AM,,,09ce2e82251ae059acab3349066f75a9067d1c036f650452f306d9f7d92d3ea3,827fc5de3bf887de408ff73ff4ea6b7fcf96141d3aa49ba6a9e3dbe6f4c66dc6,Unattributed Reason:ClickId and stableId are null
+,ServiceTitan Integrated Bookings - MS,6/26/2026 3:39:52 AM,,,e21bf8264d12f4176c0593b02e1cdd69f8b5fcc779f194a8a21187e816b1ca51,4f0ea3eb6fd7ec6959af769bb54f01dd9aa20012ad94fdd764b4db1a56bfa0a5,Success
+,ServiceTitan Integrated Bookings - MS,6/26/2026 3:40:40 AM,,,61d34e310d0a5b501275f053eeaabf33ed051c1ff5fc5d382d0f5cfcde31c81d,cf31a8879f26076292fcee6687f931a6e10446d76bf162ffc890bf897b93a81c,Success
+,ServiceTitan Integrated Bookings - MS,6/26/2026 3:41:49 AM,,,289fcad6019de0d4fd3a33ac99cc3a9cff2a0272451fba37d4c05f6449a6e51b,361b7c48fcba82c10bf723ba2ae6c3b8488909d92989f18ecfc4fb2ff087e6e4,Success
+,ServiceTitan Integrated Bookings - MS,6/26/2026 2:48:03 PM,,,de9fecc2cb7aa06debb5c6b6e32dddc36032162c5394b46212b6f9cbe78714ad,2516bcef3340b266ea120248ebeab693458b034310dc6dee7bb5b8be90840734,Success
+,ServiceTitan Integrated Bookings - MS,6/26/2026 9:21:40 PM,,,eb193ccca51b2fe4df3ba77f4c7a6460a25bb893b794d7b324c3c8965e64288e,52642cc0a820d3476a154f23fed53776798f73fd93c37425eb74ca254081f9cc,Unattributed Reason: Click not found
+,ServiceTitan Integrated Bookings - MS,6/27/2026 2:00:45 AM,,,bf20f45be815281b09349d90e648dc4fab554a73e6865c9d47b06ee015ac58ec,55e815955425b8918fc0de4577e669d676db33c6413e1185412f72a494576312,Unattributed Reason: Click not found
+,ServiceTitan Integrated Bookings - MS,6/28/2026 2:25:09 PM,,,e3d8c9b89be69b26a75b01088656430b489b557c04b0fc719d2497910aff39fb,1e1902c08af6065ba98a133cb5369fd44c837fcea6daab6196293af3e9d6d943,Unattributed Reason: Click not found
+,ServiceTitan Integrated Bookings - MS,6/28/2026 5:14:31 PM,,,373fd51d64c04f4727258f5b11efc2a5e570aec14110ad5f40d3ce7804a90bdd,e8764dd3cd00938d3db3c75a8c5d2cd301a04bfb33969b5add7c911ce7dd2994,Unattributed Reason: Click not found
+,ServiceTitan Integrated Bookings - MS,6/28/2026 8:07:33 PM,,,345d481300ae8e61476b492942cfba46642152c98101cfa3171bf7aae70c3864,be745632194ef0e7ffa784f6877f00a94c346248aaa8e0fb82bf041c35f2065b,Unattributed Reason: Click not found
+,ServiceTitan Integrated Bookings - MS,6/28/2026 9:32:14 PM,,,21254010194a6ba8fd8a5aa76f7c45fc515fe8f9d62d8c7bb76eb161a8188772,d0f24a5523dfe516921759dbac2ad0c42fc08b3b107e9696807bea6423834b91,Unattributed Reason:ClickId and stableId are null
+,ServiceTitan Integrated Bookings - MS,6/28/2026 10:24:58 PM,,,11fbb12fd650ab38d9405fd9f5ea8b7399d87ba228b2e0c3c230f4476311de63,c8e6ce4f0ab294a9ad993b4c9bad4dc2bd224f63b9d33cbcb9ce1e005e90342c,Unattributed Reason: Click not found
+,ServiceTitan Integrated Bookings - MS,6/29/2026 1:13:57 AM,,,548b9a4a7483c3eab9880fbd30d57cb890af2645697cfb067f7986d5ed5e2f4e,32f2a338a176d2b7552ce6c9bfddabd216dafde29cacec6dab531b816a63fe80,Unattributed Reason:ClickId and stableId are null
+,ServiceTitan Lead - MS,6/22/2026 11:34:34 PM,,,9a32cf63af0e0d77b600588feb0e0219c4ac07f54b34896c3537c2bbb2d4e3b5,735173ec35e9fe93c6120c2050a18dd2d529d585bc0893d551607dd3e606409d,Unattributed Reason:ClickId and stableId are null
+,ServiceTitan Lead - MS,6/27/2026 5:38:42 PM,,,69ea47159134f768413fabcab728fab334bc72875b9cb949cb1b210bf71fb3d0,4e3eb7ef60164fa0eaa8d153abd6cd86f81a16a931800ac9371445e917a6b918,Unattributed Reason: Click not found
