@@ -1,0 +1,28 @@
+[project]
+name = "servicetitan-msads-oci"
+version = "1.0.0"
+description = "Send ServiceTitan booked/completed jobs to Microsoft Ads as offline conversions, matched to the originating ad click (msclkid)."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+authors = [{ name = "Alex Murtha" }]
+dependencies = ["certifi>=2024.0", "PyYAML>=6.0", "jsonschema>=4.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+st-msads-oci = "st_msads_oci.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+st_msads_oci = ["input.schema.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
