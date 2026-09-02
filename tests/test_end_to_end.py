@@ -4,11 +4,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
-pytestmark = pytest.mark.skip(reason="CLI arrives in Task 9")
-
 from st_msads_oci.ledger import Ledger, seed_from_result_csv
+from tests.conftest import make_settings
 
 JUNE = "tests/fixtures/june_result.csv"
 
@@ -43,18 +40,19 @@ PAYLOAD = {
 
 def run_cli(project_dir, payload_path, now="2026-07-06T12:00:00Z"):
     import os
-    secrets_path = project_dir / "secrets.env"
-    if not secrets_path.exists():
-        secrets_path.write_text("OCI_WORKER_URL=https://example.invalid\nOCI_WORKER_BEARER=x\n"
-                                 "OCI_EMAIL_TO=alerts@example.com\n")
+    cfg = project_dir / "accounts.yaml"
+    if not cfg.exists():
+        cfg.write_text('servicetitan: {campaign_category: "Paid Microsoft"}\n'
+                       'microsoft_ads: {legacy_goal_names: ["ServiceTitan Integrated Bookings - MS", "ServiceTitan Lead - MS"]}\n'
+                       'test_identities: {emails: ["test.identity@example.com"], phones: ["(555) 555-0199"]}\n'
+                       'initial_watermark: "2026-06-01T00:00:00+00:00"\n')
     map_path = project_dir / "oci_map.json"
     if not map_path.exists():
         map_path.write_text(json.dumps({"ids": {}, "dni": {}, "forms": []}))
-    env = {**os.environ, "OCI_DOWNLOADS_DIR": str(project_dir / "no_downloads"),
-           "OCI_MAP_FILE": str(map_path)}
+    env = {**os.environ, "OCI_DOWNLOADS_DIR": str(project_dir / "no_downloads"), "OCI_MAP_FILE": str(map_path)}
     return subprocess.run(
-        [sys.executable, "build_upload.py", "--input", str(payload_path),
-         "--project-dir", str(project_dir), "--no-email", "--now", now],
+        [sys.executable, "-m", "st_msads_oci.cli", "build", "--config", str(cfg), "--input", str(payload_path),
+         "--project-dir", str(project_dir), "--no-notify", "--now", now],
         capture_output=True, text=True, cwd=Path(__file__).resolve().parents[1], env=env)
 
 
@@ -107,14 +105,22 @@ def test_contactless_call_origin_row_withheld_not_validated(tmp_path):
 
 
 def test_alert_mode_send_failure_exits_2_with_json(tmp_path):
-    # no secrets.env in tmp project dir -> send path fails -> graceful contract
+    # A configured-but-unreachable notifier must not be silently swallowed: the run reports
+    # the failure in notify_errors and exits 2. HOOK points at a closed port so the webhook
+    # POST is refused; the stdout JSON still carries the alert message.
+    import os
+    cfg = tmp_path / "accounts.yaml"
+    cfg.write_text('servicetitan: {campaign_category: "Paid Microsoft"}\n'
+                   'notifications: [{type: webhook, url_env: HOOK}]\n')
+    env = {**os.environ, "HOOK": "http://127.0.0.1:9"}
     result = subprocess.run(
-        [sys.executable, "build_upload.py", "--alert", "boom",
-         "--project-dir", str(tmp_path)],
-        capture_output=True, text=True, cwd=Path(__file__).resolve().parents[1])
-    assert result.returncode == 2
+        [sys.executable, "-m", "st_msads_oci.cli", "alert", "--config", str(cfg),
+         "--project-dir", str(tmp_path), "boom"],
+        capture_output=True, text=True, cwd=Path(__file__).resolve().parents[1], env=env)
+    assert result.returncode == 2, result.stderr
     summary = json.loads(result.stdout.strip().splitlines()[-1])
-    assert summary == {"alert": "boom", "emailed": False}
+    assert summary["alert"] == "boom"
+    assert summary["notify_errors"]  # non-empty: the webhook failure was surfaced
 
 
 def test_triage_state_saved_even_when_build_fails_after_triage(tmp_path):
@@ -126,7 +132,7 @@ def test_triage_state_saved_even_when_build_fails_after_triage(tmp_path):
     state_dir.mkdir()
     state_path = state_dir / "ledger.json"
     ledger = Ledger()
-    ledger.uploaded = seed_from_result_csv(JUNE)
+    ledger.uploaded = seed_from_result_csv(JUNE, make_settings())
     for e in ledger.uploaded:
         e["status"] = None
     ledger.save(state_path)
@@ -144,26 +150,27 @@ def test_triage_state_saved_even_when_build_fails_after_triage(tmp_path):
     assert (tmp_path / "results" / "archive" / "OfflineConvABC_AllResultFile.csv").exists()
 
 
-def test_missing_input_and_alert_exits_2_with_clean_message(tmp_path):
-    # Neither --input nor --alert given: must fail fast with a clean usage error,
-    # not crash deep inside build() with an unhandled TypeError traceback.
+def test_missing_input_exits_2_with_clean_message(tmp_path):
+    # `build` with no --input: argparse must reject it up front with a clean usage error,
+    # not crash deep inside build() with an unhandled traceback.
     result = subprocess.run(
-        [sys.executable, "build_upload.py", "--project-dir", str(tmp_path)],
+        [sys.executable, "-m", "st_msads_oci.cli", "build", "--project-dir", str(tmp_path)],
         capture_output=True, text=True, cwd=Path(__file__).resolve().parents[1])
     assert result.returncode == 2
-    assert "TypeError" not in result.stderr
     assert "Traceback" not in result.stderr
-    assert result.stderr.strip() != ""
+    assert "required" in result.stderr
 
 
-def test_alert_mode_no_email_exits_0(tmp_path):
+def test_alert_mode_no_notify_exits_0(tmp_path):
+    cfg = tmp_path / "accounts.yaml"
+    cfg.write_text('servicetitan: {campaign_category: "Paid Microsoft"}\n')
     result = subprocess.run(
-        [sys.executable, "build_upload.py", "--alert", "boom", "--no-email",
-         "--project-dir", str(tmp_path)],
+        [sys.executable, "-m", "st_msads_oci.cli", "alert", "--config", str(cfg),
+         "--project-dir", str(tmp_path), "--no-notify", "boom"],
         capture_output=True, text=True, cwd=Path(__file__).resolve().parents[1])
-    assert result.returncode == 0
+    assert result.returncode == 0, result.stderr
     summary = json.loads(result.stdout.strip().splitlines()[-1])
-    assert summary == {"alert": "boom", "emailed": False}
+    assert summary == {"alert": "boom", "notify_errors": []}
 
 
 PROJECT_PAYLOAD = {
