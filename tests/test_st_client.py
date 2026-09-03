@@ -32,3 +32,10 @@ def test_retry_once_on_500_then_raise():
 def test_get_optional_404_is_none():
     c, _ = make([(200, {"access_token": "T", "expires_in": 900}), (404, {})])
     assert c.get_optional("/a/{tenant}/1") is None
+
+def test_sends_user_agent_header():
+    from st_msads_oci.pull.st_client import USER_AGENT
+    c, calls = make([(200, {"access_token": "T", "expires_in": 900}), (200, {"data": [], "hasMore": False})])
+    c.get("/jpm/v2/tenant/{tenant}/jobs")
+    assert calls[0].get_header("User-agent") == USER_AGENT
+    assert calls[1].get_header("User-agent") == USER_AGENT

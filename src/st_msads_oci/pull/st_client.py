@@ -8,6 +8,8 @@ import urllib.request
 
 import certifi
 
+USER_AGENT = "st-msads-oci/1.0 (+https://github.com/wvuhskr/servicetitan-msads-oci)"
+
 
 class ServiceTitanError(Exception):
     def __init__(self, status, path, body):
@@ -37,7 +39,8 @@ class ServiceTitanClient:
         data = urllib.parse.urlencode({"grant_type": "client_credentials", "client_id": self.client_id,
                                        "client_secret": self.client_secret}).encode()
         req = urllib.request.Request(self.auth_url, data=data, method="POST",
-                                     headers={"Content-Type": "application/x-www-form-urlencoded"})
+                                     headers={"Content-Type": "application/x-www-form-urlencoded",
+                                              "User-Agent": USER_AGENT})
         status, _, body = self._open(req)
         if status != 200:
             raise ServiceTitanError(status, "connect/token", body[:300])
@@ -51,7 +54,8 @@ class ServiceTitanClient:
             url += "?" + urllib.parse.urlencode({k: v for k, v in params.items() if v is not None})
         for attempt in (0, 1):
             req = urllib.request.Request(url, headers={"Authorization": f"Bearer {self._bearer()}",
-                                                       "ST-App-Key": self.app_key, "Accept": "application/json"})
+                                                       "ST-App-Key": self.app_key, "Accept": "application/json",
+                                                       "User-Agent": USER_AGENT})
             try:
                 status, headers, body = self._open(req)
             except urllib.error.URLError as e:
