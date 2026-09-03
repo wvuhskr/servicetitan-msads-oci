@@ -126,7 +126,7 @@ def pull_all(client, settings, ledger, now, log=print):
             enriched += 1
             cust = lc.get("customer") or {}
             row["customerName"] = cust.get("name")
-            row["email"] = cust.get("email")
+            row["email"] = cust.get("email") or None
             row["phones"] = [c["value"] for c in cust.get("contacts") or []
                              if "Phone" in (c.get("type") or "") and c.get("value")]
             if not (cust.get("contacts") or []) and cust.get("id"):

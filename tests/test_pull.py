@@ -112,3 +112,11 @@ def test_write_payload_atomic_validates_and_replaces(tmp_path):
     with pytest.raises(ValueError):
         write_payload_atomic({"generated_at": "x"}, out)
     assert json.loads(out.read_text())["jobs"]   # old content intact after failed write
+
+def test_empty_servicetitan_email_normalizes_to_null(tmp_path):
+    r = routes()
+    r["/telecom/v2/tenant/{tenant}/calls"]["data"][0]["leadCall"]["customer"]["email"] = ""
+    p = pull_all(FakeClient(r), make_settings(), Ledger(), NOW, log=lambda *a: None)
+    calls = {x["id"]: x for x in p["calls"]}
+    assert calls[700]["email"] is None
+    write_payload_atomic(p, tmp_path / "x.json")  # must not raise ValueError from schema
