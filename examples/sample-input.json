@@ -1,0 +1,31 @@
+{
+  "generated_at": "2026-07-06T12:00:00Z",
+  "campaigns": [
+    {"id": 1, "name": "Brand", "category": "Paid Microsoft"},
+    {"id": 2, "name": "Google", "category": "Paid Google"}
+  ],
+  "bookings": [
+    {"id": 10, "createdOn": "2026-07-01T14:00:00Z", "campaignId": 1,
+     "customerName": "J", "email": null, "phones": []},
+    {"id": 11, "createdOn": "2026-07-01T14:05:00Z", "campaignId": 2,
+     "customerName": null, "email": null, "phones": []}
+  ],
+  "jobs": [
+    {"id": 20, "completedOn": "2026-07-02T15:00:00Z", "campaignId": 1, "customerName": null,
+     "email": "a@b.co", "phones": ["(555) 555-0100"], "invoiceTotal": 750.25,
+     "leadCallId": null, "bookingId": 5, "projectId": null},
+    {"id": 21, "completedOn": "2026-07-02T15:10:00Z", "campaignId": 2, "customerName": null,
+     "email": null, "phones": [], "invoiceTotal": null,
+     "leadCallId": null, "bookingId": null, "projectId": null}
+  ],
+  "calls": [
+    {"id": 7, "receivedOn": "2026-07-02T15:00:00Z", "to": "5555550100", "from": "5555550101",
+     "direction": "Inbound", "campaign": {"id": 1}},
+    {"id": 8, "receivedOn": "2026-07-02T16:00:00Z", "to": null, "from": null,
+     "direction": "Inbound", "callType": "Booked", "campaign": {"id": 1},
+     "customerName": "K", "email": null, "phones": ["5555550102"]},
+    {"id": 9, "receivedOn": "2026-07-02T16:10:00Z", "to": null, "from": null,
+     "direction": "Inbound", "callType": "Booked", "campaign": {"id": 2},
+     "customerName": null, "email": null, "phones": []}
+  ]
+}
