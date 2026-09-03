@@ -31,10 +31,13 @@ PAYLOAD = {
     ],
     "jobs": [
         {"id": 20, "completedOn": "2026-07-02T15:00:00Z", "campaignId": 1, "customerName": "Web Job",
-         "email": "webjob@x.com", "phones": [], "invoiceTotal": 750.25, "leadCallId": None, "bookingId": 5},
+         "email": "webjob@x.com", "phones": [], "invoiceTotal": 750.25, "leadCallId": None, "bookingId": 5,
+         "projectId": None},
         {"id": 21, "completedOn": "2026-07-02T15:30:00Z", "campaignId": 1, "customerName": "Call Job",
-         "email": "calljob@x.com", "phones": [], "invoiceTotal": 900.0, "leadCallId": 7, "bookingId": None},
+         "email": "calljob@x.com", "phones": [], "invoiceTotal": 900.0, "leadCallId": 7, "bookingId": None,
+         "projectId": None},
     ],
+    "calls": [],
 }
 
 
@@ -94,7 +97,8 @@ def test_contactless_call_origin_row_withheld_not_validated(tmp_path):
         "bookings": [],
         "jobs": [{"id": 30, "completedOn": "2026-07-02T15:00:00Z", "campaignId": 1,
                   "customerName": "No Contact", "email": None, "phones": [],
-                  "invoiceTotal": 500.0, "leadCallId": 999, "bookingId": None}],
+                  "invoiceTotal": 500.0, "leadCallId": 999, "bookingId": None, "projectId": None}],
+        "calls": [],
     }
     payload_path = tmp_path / "input.json"
     payload_path.write_text(json.dumps(payload))
@@ -180,6 +184,7 @@ PROJECT_PAYLOAD = {
         {"id": 2, "name": "HVAC - Search - GAds", "category": "Paid Google"},
     ],
     "bookings": [],
+    "calls": [],
     "jobs": [
         # project 5001: $0 Paid-MS lead + $17,117 install stamped Google (spec edges 1+6)
         {"id": 200, "completedOn": "2026-07-25T09:00:00Z", "campaignId": 1, "customerName": "Jane",
@@ -282,17 +287,21 @@ def test_later_day_with_new_rows_does_not_clobber_earlier_still_in_window_rows(t
         "generated_at": "2026-07-06T12:00:00Z",
         "campaigns": [{"id": 1, "name": "Example Brand - Search - MS", "category": "Paid Microsoft"}],
         "bookings": [],
+        "calls": [],
         "jobs": [{"id": 500, "completedOn": "2026-07-06T09:00:00Z", "campaignId": 1,
                   "customerName": "Alice Clobber", "email": "alice.clobber@example.com",
-                  "phones": [], "invoiceTotal": 500.00, "leadCallId": None, "bookingId": None}],
+                  "phones": [], "invoiceTotal": 500.00, "leadCallId": None, "bookingId": None,
+                  "projectId": None}],
     }
     day2 = {
         "generated_at": "2026-07-08T12:00:00Z",
         "campaigns": [{"id": 1, "name": "Example Brand - Search - MS", "category": "Paid Microsoft"}],
         "bookings": [],
+        "calls": [],
         "jobs": [{"id": 501, "completedOn": "2026-07-08T09:00:00Z", "campaignId": 1,
                   "customerName": "Bob Clobber", "email": "bob.clobber@example.com",
-                  "phones": [], "invoiceTotal": 800.00, "leadCallId": None, "bookingId": None}],
+                  "phones": [], "invoiceTotal": 800.00, "leadCallId": None, "bookingId": None,
+                  "projectId": None}],
     }
     day1_path = tmp_path / "day1.json"
     day1_path.write_text(json.dumps(day1))
