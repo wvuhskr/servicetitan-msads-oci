@@ -98,7 +98,7 @@ with no `completedOn` — an in-progress job isn't emitted yet.
 | `customerName` | string | yes | yes | customer name | `null` unless enriched |
 | `email` | string | yes | yes | customer email | `null` unless enriched |
 | `phones` | array of string | no | yes | customer phone numbers | `[]` unless enriched |
-| `invoiceTotal` | number | yes | yes | sum of invoice totals for this job | `GET /accounting/v2/tenant/{tenant}/invoices?jobId={id}`, summed; only computed for enriched (category-matching) jobs, otherwise `null` |
+| `invoiceTotal` | number | yes | yes | sum of invoice totals for this job | `GET /accounting/v2/tenant/{tenant}/invoices?jobId={id}`, summed; only computed for enriched (category-matching) jobs, otherwise `null`; the API returns `total` as a decimal string, converted to a number before summing |
 | `leadCallId` | integer | yes | yes | the call that generated this job, if any | -> `leadCallId` |
 | `bookingId` | integer | yes | yes | the booking this job came from, if any | -> `bookingId` |
 | `projectId` | integer | yes | yes | the project this job belongs to, if any | -> `projectId` |

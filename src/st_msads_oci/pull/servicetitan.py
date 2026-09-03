@@ -107,7 +107,8 @@ def pull_all(client, settings, ledger, now, log=print):
                "leadCallId": j.get("leadCallId"), "bookingId": j.get("bookingId"), "projectId": j.get("projectId")}
         if j.get("campaignId") in ms_ids:
             enriched += 1
-            row["invoiceTotal"] = sum((inv.get("total") or 0)
+            # ServiceTitan returns money fields as decimal strings
+            row["invoiceTotal"] = sum(float(inv.get("total") or 0)
                                       for inv in client.get_paged(ENDPOINTS["invoices"], {"jobId": j["id"]}))
             if j.get("customerId"):
                 row["customerName"], row["email"], row["phones"] = contacts.get(j["customerId"])

@@ -44,7 +44,7 @@ def routes():
             {"id": 21, "completedOn": None, "campaignId": 1, "customerId": 77},
             {"id": 22, "completedOn": "2026-07-02T16:00:00Z", "campaignId": 2, "customerId": 88,
              "leadCallId": 9, "bookingId": None, "projectId": 3}]},
-        "/accounting/v2/tenant/{tenant}/invoices": lambda p: {"data": [{"total": 500.0}, {"total": 250.25}]} if p.get("jobId") == 20 else {"data": []},
+        "/accounting/v2/tenant/{tenant}/invoices": lambda p: {"data": [{"total": "500.00"}, {"total": "250.25"}, {"total": None}]} if p.get("jobId") == 20 else {"data": []},
         "/crm/v2/tenant/{tenant}/customers/77/contacts": {"data": [{"type": "Email", "value": "s@example.com"},
                                                                    {"type": "MobilePhone", "value": "555-555-0102"}]},
         "/crm/v2/tenant/{tenant}/customers/77": {"id": 77, "name": "Sched Customer"},
