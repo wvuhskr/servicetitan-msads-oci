@@ -19,7 +19,7 @@ Microsoft only gives you an ad click's ID (`msclkid`) at the moment someone clic
 | `dni:<last 10 digits>:...` | a session beacon carrying a DNI number | the click ID + timestamp | 40 days |
 | `form:...` | every form beacon, with or without a click ID | the click ID (maybe null) + timestamp | 100 days |
 
-Emails and phones are hashed (SHA-256) before they're ever written — the raw value never touches KV. `form:` records every submission regardless of whether a click ID was present, so capture rate (what fraction of form submissions actually carried a click ID) is measurable later even for visits capture couldn't fully bind.
+Emails and phones are hashed (SHA-256) before they're ever written — the raw value never touches KV. `form:` records every submission regardless of whether a click ID was present, which is useful raw data for later analysis even for visits capture couldn't fully bind.
 
 The click-ID cookie itself lives 90 days in the visitor's browser — longer than any KV TTL above — so cookie expiry is never what limits a match; the KV TTLs are.
 
