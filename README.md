@@ -1,5 +1,7 @@
 # ServiceTitan → Microsoft Ads Offline Conversion Uploader
 
+**Unofficial. Not affiliated with, endorsed by, or sponsored by ServiceTitan or Microsoft.** This is an independent, third-party tool that integrates with the ServiceTitan and Microsoft Advertising APIs through their public interfaces. "ServiceTitan," "Microsoft Advertising," "Bing," and other product names are trademarks of their respective owners.
+
 **ServiceTitan already sends your closed-job revenue back to Google Ads. It sends Microsoft/Bing nothing.**
 
 If you run Microsoft Ads for a ServiceTitan shop, Microsoft's automated bidding is flying blind: it never learns which ad clicks became booked, paid jobs, so it optimizes toward raw form fills instead of revenue. This tool closes that gap. It matches your ServiceTitan booked and completed jobs back to the Microsoft ad click that produced them and uploads them as offline conversions, so Microsoft bids toward what actually closes. Built for ServiceTitan home-services shops spending on Microsoft/Bing Ads.
