@@ -1,5 +1,9 @@
 # ServiceTitan → Microsoft Ads Offline Conversion Uploader
 
+**ServiceTitan already sends your closed-job revenue back to Google Ads. It sends Microsoft/Bing nothing.**
+
+If you run Microsoft Ads for a ServiceTitan shop, Microsoft's automated bidding is flying blind: it never learns which ad clicks became booked, paid jobs, so it optimizes toward raw form fills instead of revenue. This tool closes that gap. It matches your ServiceTitan booked and completed jobs back to the Microsoft ad click that produced them and uploads them as offline conversions, so Microsoft bids toward what actually closes. Built for ServiceTitan home-services shops spending on Microsoft/Bing Ads.
+
 ## What it does
 
 `servicetitan-msads-oci` sends your ServiceTitan booked and completed jobs to Microsoft Advertising as offline conversions, matched back to the ad click that produced them. A small Cloudflare Worker (a script that runs on Cloudflare's edge network, not your own server) captures each visitor's Microsoft Click ID (`msclkid`) when they land on your site from an ad, and a scheduled Python pull later joins that click ID to whatever ServiceTitan booking, completed job, or booked call it produced. Microsoft uses the result to credit the conversion back to the original ad and to feed value-based Smart Bidding (Microsoft's automated bidding that optimizes toward conversion value, not just conversion count).
