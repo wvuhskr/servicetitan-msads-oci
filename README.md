@@ -122,14 +122,14 @@ Run the pull and the build back to back, at least once a day — Microsoft's sch
 
 ## Roadmap
 
-Out of scope for v1, and candidates for v2:
+Out of scope for v1, and candidates for v2, ordered by how much each would widen adoption:
 
-- A first-class ServiceTitan client — the bundled pull (`pull/pull_servicetitan.py`) is a reference implementation, not hardened for every tenant configuration.
-- Project rollup + suspect recovery — recovering jobs whose attribution lives on a parent project rather than the job itself. Already has an extension point in the input contract (`project_jobs` — see `pull/INPUT_FORMAT.md`), just not populated by the bundled pull.
-- Direct Microsoft API push, removing the scheduled-import setup step entirely.
-- An alternate capture path that writes `msclkid` directly into a ServiceTitan field, letting a shop drop Cloudflare from the stack.
-- Google web-originated closed-won revenue, as a separate tool (ServiceTitan's own Marketing Pro already covers Google calls; the gap there is web).
-- User-defined conversion types — today the three goal types (`completed_jobs`, `booked_web`, `booked_call`) are hardcoded in the engine; letting `accounts.yaml` declare additional goal types is real backlog, not v1 scope.
+1. User-defined conversion types — today the three goal types (`completed_jobs`, `booked_web`, `booked_call`) are hardcoded in the engine; letting `accounts.yaml` declare additional goal types is real backlog, not v1 scope. This is the biggest blocker to a shop whose Microsoft goals differ from the built-in three adopting the tool as-is.
+2. A first-class ServiceTitan client — the bundled pull (`pull/pull_servicetitan.py`) is a reference implementation, not hardened for every tenant configuration. Hardening it moves the pull from "a developer can adapt this" to "a shop runs it as-is."
+3. Direct Microsoft API push, removing the scheduled-import setup step and the need to host the two files — a simpler one-time setup and near-real-time uploads.
+4. An alternate capture path that writes `msclkid` directly into a ServiceTitan field, letting a shop drop Cloudflare from the stack. Together with the direct API push above, it removes the Cloudflare Worker requirement completely.
+5. Project rollup + suspect recovery — recovering jobs whose attribution lives on a parent project rather than the job itself. Already has an extension point in the input contract (`project_jobs` — see `pull/INPUT_FORMAT.md`), just not populated by the bundled pull.
+6. Google web-originated closed-won revenue, as a separate tool (ServiceTitan's own Marketing Pro already covers Google calls; the gap there is web).
 
 ## License
 
