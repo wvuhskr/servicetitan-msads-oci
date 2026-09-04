@@ -37,3 +37,15 @@ def test_email_must_be_null_not_empty_string():
 
 def test_top_level_keys_required():
     assert any("campaigns" in e for e in validate_input({"generated_at": "x"}))
+
+
+def test_validation_errors_never_include_customer_values_or_dynamic_keys():
+    import copy
+    bad = copy.deepcopy(GOOD)
+    bad['jobs'][0]['email'] = ['private.person@example.com']
+    bad['jobs'][0]['phones'] = {'5551234567': 'private.person@example.com'}
+    bad['project_jobs'] = {'private.person@example.com': [{'total': 'SECRET_VALUE'}]}
+    errors = '\n'.join(validate_input(bad))
+    for sensitive in ['private.person@example.com', '5551234567', 'SECRET_VALUE']:
+        assert sensitive not in errors
+    assert 'email' in errors and 'phones' in errors and 'project_jobs' in errors

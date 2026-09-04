@@ -14,10 +14,10 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "${{ matrix.python-version }}" }
       - run: pip install -e ".[dev]"
-      - run: python -m pytest -q
       - uses: actions/setup-node@v4
         with: { node-version: "20" }
-      - run: node --test worker/test/normalize.test.js
+      - run: python -m pytest -q
+      - run: node --test worker/test/*.test.js
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

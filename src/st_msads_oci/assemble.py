@@ -1,4 +1,6 @@
 import re
+import os
+import tempfile
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -38,7 +40,27 @@ def validate(rows, now=None):
             raise InvariantError(f"value on non-job goal (st id {r.st_id})")
 
 
-def assemble_csv(rows, path, goal_names) -> int:
+def _write_atomic(path, text):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # A unique sibling avoids clobbering unrelated files with the same stem.
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
+                                     prefix=path.name + ".", suffix=".tmp", delete=False) as f:
+        tmp = Path(f.name)
+        try:
+            f.write(text)
+            f.flush()
+            os.fsync(f.fileno())
+        except BaseException:
+            tmp.unlink(missing_ok=True)
+            raise
+    try:
+        os.replace(tmp, path)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+def assemble_csv(rows, path, goal_names, *, merge=False) -> int:
     lines = [PARAMS, HEADER]
     for r in sorted(rows, key=lambda x: x.ts):
         is_job = r.goal == GOAL_COMPLETED_JOBS
@@ -48,8 +70,12 @@ def assemble_csv(rows, path, goal_names) -> int:
             "USD" if is_job else "",
             r.email_hash or "", r.phone_hash or "",
         ]))
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    Path(path).write_text("\n".join(lines) + "\n")
+    if merge and Path(path).exists():
+        previous = Path(path).read_text().splitlines()
+        if previous[:2] != [PARAMS, HEADER]:
+            raise InvariantError("existing dated CSV has an invalid header")
+        lines = [PARAMS, HEADER, *dict.fromkeys([*previous[2:], *lines[2:]])]
+    _write_atomic(path, "\n".join(lines) + "\n")
     return len(lines)
 
 
@@ -87,6 +113,5 @@ def assemble_cumulative(out_path, dated_dir, prefix, now, days=CUMULATIVE_DAYS) 
             if ln.strip():
                 rows.append(ln)
     rows = list(dict.fromkeys(rows))  # dedup, preserve first-seen order
-    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
-    Path(out_path).write_text("\n".join([PARAMS, HEADER, *rows]) + "\n")
+    _write_atomic(out_path, "\n".join([PARAMS, HEADER, *rows]) + "\n")
     return len(rows)

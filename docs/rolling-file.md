@@ -19,3 +19,7 @@ There's a second, independent safety net at the Worker itself: if the engine sto
 ## What this means day to day
 
 Missing a run now and then is fine — a booked job or completed job still reaches Microsoft as long as some run happens within 14 days of it being built. Missing more than 14 days in a row is the one case worth watching for: a row that got built into a dated snapshot but never actually served in that stretch ages out of the rolling window and won't come back on its own — the engine's ledger already marks it as uploaded the moment it's written into a dated file, so a later run won't rebuild it either. Keep an eye on `output/summary-latest.json` and your run notifications — that's what would surface a gap like this happening in the first place.
+
+## Repeated runs on the same day
+
+Sequential builds merge new conversion rows into the existing dated file and replace it atomically. They no longer overwrite earlier rows with only the newest batch. The rolling file includes the merged daily history, including when a later run adds rows in only one tier. Run only one build process at a time per project directory.

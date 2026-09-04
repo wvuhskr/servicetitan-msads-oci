@@ -43,3 +43,27 @@ def test_shared_vectors():
     for v in vectors:
         fn = normalize_email if v["kind"] == "email" else normalize_phone
         assert fn(v["raw"]) == v["normalized"], f"vector failed: {v}"
+
+
+def test_actual_python_javascript_normalization_and_hash_parity():
+    """Run both implementations, including edge characters absent from old fixtures."""
+    import subprocess
+    from st_msads_oci.normalize import sha256_hex
+    root = Path(__file__).parents[1]
+    vectors = json.loads((Path(__file__).parent / 'fixtures/normalize_vectors.json').read_text())
+    # Every code point in the supported Latin/decomposition ranges, plus
+    # unsupported scripts and controls. Expectations are compared across runtimes.
+    vectors += [{'kind': 'email', 'raw': 'a' + chr(c) + 'b@example.com'}
+                for lo, hi in [(0, 0x400), (0x1ab0, 0x1b00), (0x1dc0, 0x1f00),
+                               (0x2000, 0x2100), (0xfe00, 0xfff0)] for c in range(lo, hi)]
+    script = '''import fs from 'node:fs';
+import {normalizeEmail,normalizePhone,sha256Hex} from './worker/src/normalize.js';
+const inputs=JSON.parse(fs.readFileSync(0,'utf8'));
+console.log(JSON.stringify(await Promise.all(inputs.map(async v=>{
+const n=(v.kind==='email'?normalizeEmail:normalizePhone)(v.raw);
+return [n,n?await sha256Hex(n):null];}))));'''
+    result = subprocess.run(['node', '--input-type=module', '-e', script],
+                            input=json.dumps(vectors), capture_output=True, text=True, cwd=root, check=True)
+    for v, actual in zip(vectors, json.loads(result.stdout), strict=True):
+        n = (normalize_email if v['kind'] == 'email' else normalize_phone)(v['raw'])
+        assert actual == [n, sha256_hex(n) if n else None], repr(v)

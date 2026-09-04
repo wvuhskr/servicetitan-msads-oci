@@ -1,34 +1,35 @@
+// Fixed shared contract: see docs/normalization.md. Unsupported scripts fail closed.
+const SPACE = /^[\u0009-\u000d\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]+|[\u0009-\u000d\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]+$/g;
+const SUPPORTED = /^[\x20-\x7e\u00c0-\u024f\u0300-\u036f\u1ab0-\u1aff\u1dc0-\u1dff\u1e00-\u1eff\u20d0-\u20ff\ufe20-\ufe2f\uff01-\uff5e]*$/;
+
 export function stripAccents(s) {
-  // ponytail: Combining Diacritical Marks (U+0300–U+036F) only — exact for Latin-script accents after NFKD.
-  // Python's unicodedata.combining() covers this block for email/phone normalization.
-  // Widen to \p{M} only if non-Latin-script contact data ever appears (would over-strip 289 codepoints vs Python).
-  return s.normalize("NFKD").replace(/[\u0300-\u036F]/g, "");
+  return s.normalize("NFKD").replace(/[\u0300-\u036f\u1ab0-\u1aff\u1dc0-\u1dff\u20d0-\u20ff\ufe20-\ufe2f]/g, "");
 }
 
 export function normalizeEmail(raw) {
-  if (!raw) return null;
-  const s = String(raw).trim().replace(/ /g, "");
-  const at = s.lastIndexOf("@");
-  if (at < 0) return null;
-  let local = s.slice(0, at);
-  const domain = s.slice(at + 1);
-  if (local.includes("@") || !domain) return null;
+  if (typeof raw !== "string") return null;
+  let s = raw.replace(SPACE, "").replace(/ /g, "");
+  if (!SUPPORTED.test(s)) return null;
+  s = stripAccents(s).toLowerCase();
+  if (/[^\x21-\x7e]/.test(s) || s.split("@").length !== 2) return null;
+  let [local, domain] = s.split("@");
   local = local.split("+")[0].replace(/\./g, "");
-  if (!local) return null;
-  return stripAccents((local + "@" + domain).toLowerCase());
+  return local && domain ? local + "@" + domain : null;
+}
+
+function asciiDigits(raw) {
+  return typeof raw === "string" ? raw.replace(/[^0-9]/g, "") : "";
 }
 
 export function normalizePhone(raw) {
-  if (!raw) return null;
-  const d = String(raw).replace(/\D/g, "");
+  const d = asciiDigits(raw);
   if (d.length === 10) return "+1" + d;
   if (d.length === 11 && d.startsWith("1")) return "+" + d;
   return null;
 }
 
 export function last10(raw) {
-  if (!raw) return null;
-  const d = String(raw).replace(/\D/g, "");
+  const d = asciiDigits(raw);
   return d.length >= 10 ? d.slice(-10) : null;
 }
 

@@ -26,7 +26,7 @@ def test_webhook_payload_and_failure_is_reported_not_raised(monkeypatch):
     def boom(*a, **k): raise OSError("down")
     monkeypatch.setattr(WebhookNotifier, "_post", staticmethod(boom))
     errs = notify_all([w], "Sub", "Body")
-    assert len(errs) == 1 and "WebhookNotifier" in errs[0] and "down" in errs[0]
+    assert len(errs) == 1 and "WebhookNotifier" in errs[0] and "OSError" in errs[0]
 
 def test_smtp_builds_message(monkeypatch):
     captured = {}
@@ -34,7 +34,7 @@ def test_smtp_builds_message(monkeypatch):
         def __init__(self, host, port, timeout=30): captured["hp"] = (host, port)
         def __enter__(self): return self
         def __exit__(self, *a): pass
-        def starttls(self): captured["tls"] = True
+        def starttls(self, context=None): captured["tls"] = True
         def login(self, u, p): captured["login"] = (u, p)
         def send_message(self, msg): captured["msg"] = msg
     monkeypatch.setattr("smtplib.SMTP", FakeSMTP)
@@ -57,3 +57,72 @@ def test_build_notifiers_smtp_and_graph_from_env():
     ns = build_notifiers(s, env)
     assert isinstance(ns[1], SmtpNotifier) and ns[1].port == 25
     assert isinstance(ns[2], GraphNotifier)
+
+
+def test_smtp_requires_verified_tls_before_login(monkeypatch):
+    import ssl
+    for port in (25, 587, 465):
+        events = []
+        class MailTransport:
+            def __init__(self, host, port, timeout=30, context=None):
+                if port == 465:
+                    assert context is not None
+                    assert context.check_hostname and context.verify_mode == ssl.CERT_REQUIRED
+                    events.append('tls')
+            def __enter__(self): return self
+            def __exit__(self, *args): pass
+            def starttls(self, context=None):
+                assert context is not None
+                assert context.check_hostname and context.verify_mode == ssl.CERT_REQUIRED
+                events.append('tls')
+            def login(self, user, password):
+                assert events == ['tls'], 'credentials sent before verified TLS'
+                events.append('login')
+            def send_message(self, message): events.append('send')
+        monkeypatch.setattr('smtplib.SMTP', MailTransport)
+        monkeypatch.setattr('smtplib.SMTP_SSL', MailTransport)
+        SmtpNotifier('mail.example', port, 'u', 'p', 'f@example.com', 't@example.com').send('s', 'b')
+        assert events == ['tls', 'login', 'send']
+
+
+def test_smtp_rejects_untrusted_certificate_before_credentials(monkeypatch, tmp_path):
+    """Exercise the real smtplib TLS handshake using an untrusted local certificate."""
+    import socket
+    import ssl
+    import subprocess
+    import threading
+    import pytest
+    import smtplib
+    key, cert = tmp_path / 'key.pem', tmp_path / 'cert.pem'
+    subprocess.run(['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes',
+                    '-keyout', str(key), '-out', str(cert), '-days', '1',
+                    '-subj', '/CN=localhost'], check=True, capture_output=True)
+    client, server = socket.socketpair()
+    client.settimeout(3); server.settimeout(3)
+    server_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    server_ctx.load_cert_chain(cert, key)
+    def serve():
+        try:
+            with server_ctx.wrap_socket(server, server_side=True) as encrypted:
+                encrypted.recv(1)
+        except (ssl.SSLError, OSError):
+            pass
+    thread = threading.Thread(target=serve, daemon=True); thread.start()
+    logins = []
+    class LocalSMTP(smtplib.SMTP):
+        def __init__(self, *args, **kwargs):
+            self.sock, self.file, self._host = client, None, 'localhost'
+        def __enter__(self): return self
+        def __exit__(self, *args): self.close()
+        def ehlo_or_helo_if_needed(self): pass
+        def has_extn(self, name): return name == 'starttls'
+        def docmd(self, *args): return 220, b'ready'
+        def login(self, *args): logins.append(True)
+        def send_message(self, *args): pass
+    monkeypatch.setattr(smtplib, 'SMTP', LocalSMTP)
+    try:
+        with pytest.raises(ssl.SSLCertVerificationError):
+            SmtpNotifier('localhost', 587, 'u', 'p', 'f@x.com', 't@x.com').send('s', 'b')
+        assert logins == []
+    finally:
+        client.close(); server.close(); thread.join(timeout=4)

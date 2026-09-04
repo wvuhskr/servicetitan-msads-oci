@@ -16,7 +16,7 @@ from .filter import attach_hashes, filter_rows
 from .ledger import Ledger
 from .notify import build_notifiers, notify_all
 from .rows import GOAL_COMPLETED_JOBS, project_rows_from_payload, rows_from_payload
-from .schema import validate_input
+from .schema import validate_input, InputValidationError
 from .triage import run_triage
 
 
@@ -44,7 +44,7 @@ def build(project_dir: Path, input_path: Path, settings, env: dict, now: datetim
     payload = json.loads(Path(input_path).read_text())
     errs = validate_input(payload)
     if errs:
-        raise ValueError("input payload failed schema validation:\n  " + "\n  ".join(errs[:30]))
+        raise InputValidationError("input payload failed schema validation:\n  " + "\n  ".join(errs[:30]))
     calls_by_id = {c["id"]: c for c in payload.get("calls", [])}
     all_rows = rows_from_payload(payload)
     proj_rows, project_member_ids, proj_findings, proj_dropped = \
@@ -67,8 +67,8 @@ def build(project_dir: Path, input_path: Path, settings, env: dict, now: datetim
     out = project_dir / "output"
     # Dated audit copies: only when there ARE new rows (unchanged behavior).
     if tier_a or tier_b:
-        assemble_csv(tier_a, out / f"oci-clickid_{today}.csv", settings.goal_names)
-        assemble_csv(tier_b, out / f"oci-pii_{today}.csv", settings.goal_names)
+        assemble_csv(tier_a, out / f"oci-clickid_{today}.csv", settings.goal_names, merge=True)
+        assemble_csv(tier_b, out / f"oci-pii_{today}.csv", settings.goal_names, merge=True)
     # Served "latest" files = deduped last-CUMULATIVE_DAYS union of the dated copies, rebuilt and
     # published on EVERY run (incl. 0-new-row days) so a row survives later runs / sleep gaps until
     # MS pulls it (spec 2026-08-18). Built AFTER the dated write above so today's rows are included.

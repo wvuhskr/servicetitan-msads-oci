@@ -1,17 +1,129 @@
 [
-  {"kind":"email","raw":"Marisol.Ortega@Yahoo.com","normalized":"marisolortega@yahoo.com"},
-  {"kind":"email","raw":"  J.o.h.n.Doe@Gmail.com ","normalized":"john@gmail.com"},
-  {"kind":"email","raw":"JOSÉ.garcía@Example.COM","normalized":"josegarcia@example.com"},
-  {"kind":"email","raw":"a b@c.com","normalized":"ab@c.com"},
-  {"kind":"email","raw":"+only@x.com","normalized":null},
-  {"kind":"email","raw":"no-at-sign.com","normalized":null},
-  {"kind":"email","raw":"a@b@c.com","normalized":null},
-  {"kind":"email","raw":"","normalized":null},
-  {"kind":"phone","raw":"(555) 259-6637","normalized":"+15552596637"},
-  {"kind":"phone","raw":"1-555-259-6637","normalized":"+15552596637"},
-  {"kind":"phone","raw":"+1 555 259 6637","normalized":"+15552596637"},
-  {"kind":"phone","raw":"555.259.6637","normalized":"+15552596637"},
-  {"kind":"phone","raw":"259-6637","normalized":null},
-  {"kind":"phone","raw":"+44 20 7946 0958","normalized":null},
-  {"kind":"phone","raw":"","normalized":null}
+  {
+    "kind": "email",
+    "raw": "Marisol.Ortega@Yahoo.com",
+    "normalized": "marisolortega@yahoo.com"
+  },
+  {
+    "kind": "email",
+    "raw": "  J.o.h.n.Doe@Gmail.com ",
+    "normalized": "john@gmail.com"
+  },
+  {
+    "kind": "email",
+    "raw": "JOS\u00c9.garc\u00eda@Example.COM",
+    "normalized": "josegarcia@example.com"
+  },
+  {
+    "kind": "email",
+    "raw": "a b@c.com",
+    "normalized": "ab@c.com"
+  },
+  {
+    "kind": "email",
+    "raw": "+only@x.com",
+    "normalized": null
+  },
+  {
+    "kind": "email",
+    "raw": "no-at-sign.com",
+    "normalized": null
+  },
+  {
+    "kind": "email",
+    "raw": "a@b@c.com",
+    "normalized": null
+  },
+  {
+    "kind": "email",
+    "raw": "",
+    "normalized": null
+  },
+  {
+    "kind": "phone",
+    "raw": "(555) 259-6637",
+    "normalized": "+15552596637"
+  },
+  {
+    "kind": "phone",
+    "raw": "1-555-259-6637",
+    "normalized": "+15552596637"
+  },
+  {
+    "kind": "phone",
+    "raw": "+1 555 259 6637",
+    "normalized": "+15552596637"
+  },
+  {
+    "kind": "phone",
+    "raw": "555.259.6637",
+    "normalized": "+15552596637"
+  },
+  {
+    "kind": "phone",
+    "raw": "259-6637",
+    "normalized": null
+  },
+  {
+    "kind": "phone",
+    "raw": "+44 20 7946 0958",
+    "normalized": null
+  },
+  {
+    "kind": "phone",
+    "raw": "",
+    "normalized": null
+  },
+  {
+    "kind": "email",
+    "raw": "a\u034fb@example.com",
+    "normalized": "ab@example.com"
+  },
+  {
+    "kind": "email",
+    "raw": "a\u1ab0b@example.com",
+    "normalized": "ab@example.com"
+  },
+  {
+    "kind": "email",
+    "raw": "\ufeffalice@example.com",
+    "normalized": "alice@example.com"
+  },
+  {
+    "kind": "email",
+    "raw": "\u0085alice@example.com",
+    "normalized": "alice@example.com"
+  },
+  {
+    "kind": "email",
+    "raw": "\uff21lice@example.com",
+    "normalized": "alice@example.com"
+  },
+  {
+    "kind": "email",
+    "raw": "\u03b4\u03bf\u03ba\u03b9\u03bc\u03ae@example.com",
+    "normalized": null
+  },
+  {
+    "kind": "email",
+    "raw": [
+      "alice@example.com"
+    ],
+    "normalized": null
+  },
+  {
+    "kind": "phone",
+    "raw": "\u0662\u0660\u0662\u0665\u0665\u0665\u0660\u0661\u0662\u0663",
+    "normalized": null
+  },
+  {
+    "kind": "phone",
+    "raw": "\uff11\uff12\uff13\uff14\uff15\uff16\uff17\uff18\uff19\uff10",
+    "normalized": null
+  },
+  {
+    "kind": "phone",
+    "raw": 2025550123,
+    "normalized": null
+  }
 ]

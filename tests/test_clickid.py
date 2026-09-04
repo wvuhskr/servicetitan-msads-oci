@@ -81,3 +81,53 @@ def test_non_recovered_row_keeps_identity_gate():
                "forms": []}
     m, source, reason = find_msclkid(row, mapping, calls_by_id)
     assert (m, source, reason) == (None, None, "no_session_captured")
+
+
+def test_identity_candidates_do_not_overwrite_or_guess_on_conflict():
+    mapping = {'ids': {'e:' + E: [
+        {'m': 'first-click', 'ts': '2026-07-22T13:00:00Z'},
+        {'m': 'other-click', 'ts': '2026-07-22T14:00:00Z'},
+    ]}}
+    assert find_msclkid(row(email_hash=E), mapping, {}) == (None, None, 'identity_ambiguous')
+
+
+def test_identity_binding_must_precede_conversion_and_be_within_90_days():
+    for ts in ['2026-07-23T00:00:00Z', '2026-01-01T00:00:00Z']:
+        mapping = {'ids': {'e:' + E: [{'m': 'wrong-time', 'ts': ts}]}}
+        assert find_msclkid(row(email_hash=E), mapping, {}) == (None, None, 'no_session_captured')
+
+
+def test_repeated_same_click_identity_candidates_are_unambiguous():
+    mapping = {'ids': {'e:' + E: [
+        {'m': 'same-click', 'ts': '2026-07-22T13:00:00Z'},
+        {'m': 'same-click', 'ts': '2026-07-22T14:00:00Z'},
+    ]}}
+    assert find_msclkid(row(email_hash=E), mapping, {}) == ('same-click', 'email', None)
+
+
+def test_fetch_map_follows_all_pages_and_merges_identity_candidates(monkeypatch):
+    import io
+    from st_msads_oci.clickid import fetch_map
+    requested = []
+    def opener(req, **kwargs):
+        requested.append(req.full_url)
+        second = 'cursor=next%2Bpage' in req.full_url
+        page = {'schema_version': 2, 'ids': {'e:' + E: [
+            {'m': 'second' if second else 'first', 'ts': '2026-07-22T13:00:00Z'}]},
+            'dni': {}, 'forms': [], 'next_cursor': None if second else 'next+page'}
+        return io.BytesIO(json.dumps(page).encode())
+    monkeypatch.setattr('urllib.request.urlopen', opener)
+    actual = fetch_map('https://worker.example', 'test-secret')
+    assert [b['m'] for b in actual['ids']['e:' + E]] == ['first', 'second']
+    assert len(requested) == 2
+
+
+def test_fetch_map_rejects_legacy_exports_and_repeated_cursors(monkeypatch):
+    import io
+    import pytest
+    from st_msads_oci.clickid import fetch_map
+    for response in [{'ids': {}, 'dni': {}, 'forms': []},
+                     {'schema_version': 2, 'ids': {}, 'dni': {}, 'forms': [], 'next_cursor': 'same'}]:
+        monkeypatch.setattr('urllib.request.urlopen', lambda *a, **k: io.BytesIO(json.dumps(response).encode()))
+        with pytest.raises(ValueError):
+            fetch_map('https://worker.example', 'test-secret')

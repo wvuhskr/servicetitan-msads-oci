@@ -1,13 +1,12 @@
 import argparse
 import json
 import sys
-import traceback
 from datetime import datetime, timezone
 from pathlib import Path
 
 from .build import build
 from .config import load_env, load_settings
-from .notify import build_notifiers, notify_all
+from .notify import build_notifiers, notify_all, failure_summary
 from .rows import parse_utc
 
 
@@ -46,14 +45,14 @@ def main(argv=None):
 
     if args.cmd == "pull":
         from .pull.servicetitan import run_pull
-        return run_pull(settings, env, project_dir, Path(args.out), now)
+        return run_pull(settings, env, project_dir, Path(args.out), now, notify=not args.no_notify)
 
     now = parse_utc(args.now) if args.now else now
     try:
         print(json.dumps(build(project_dir, Path(args.input), settings, env, now, notify=not args.no_notify)))
         return 0
-    except Exception:
-        tb = traceback.format_exc()
+    except Exception as exc:
+        tb = failure_summary(exc)
         if not args.no_notify:
             notify_all(build_notifiers(settings, env), f"MS Ads offline conversions FAILED — {now:%Y-%m-%d}", tb)
         print(tb, file=sys.stderr)

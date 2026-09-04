@@ -40,99 +40,128 @@ export default {
   },
 };
 
-function bearerOk(req, env) {
-  if (!env.OCI_BEARER) return false;
-  return req.headers.get("Authorization") === `Bearer ${env.OCI_BEARER}`;
+async function secretMatches(actual, expected) {
+  // HMAC verification uses the runtime's cryptographic comparison, not string equality.
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", encoder.encode(expected),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(expected));
+  return crypto.subtle.verify("HMAC", key, signature, encoder.encode(actual || ""));
+}
+
+async function bearerOk(req, env, name = "OCI_BEARER") {
+  if (!env[name]) return false;
+  return secretMatches(req.headers.get("Authorization"), `Bearer ${env[name]}`);
 }
 
 async function collect(req, env, allowedOrigins) {
+  // Only a trusted booking/session integration may establish identity bindings.
+  // Origin alone is forgeable; CAPTURE_BEARER must never appear in browser code.
+  if (!await bearerOk(req, env, "CAPTURE_BEARER")) return new Response("unauthorized", { status: 401 });
   const origin = req.headers.get("Origin");
-  if (!allowedOrigins.includes(origin)) return new Response("forbidden", { status: 403 });
-  const corsHeaders = { "Access-Control-Allow-Origin": origin };
+  if (origin && !allowedOrigins.includes(origin)) return new Response("forbidden", { status: 403 });
 
   const cl = parseInt(req.headers.get("Content-Length") || "0", 10);
-  if (cl > 2048) return new Response("too large", { status: 413, headers: corsHeaders });
-
-  // ponytail: in-colo limiter; per-IP per-minute, no KV cost
-  const ip = req.headers.get("CF-Connecting-IP") || "unknown";
+  if (cl > 2048) return new Response("too large", { status: 413 });
   if (env.RL) {
-    const { success } = await env.RL.limit({ key: ip });
-    if (!success) return new Response("too many", { status: 429, headers: corsHeaders });
+    const { success } = await env.RL.limit({ key: req.headers.get("CF-Connecting-IP") || "unknown" });
+    if (!success) return new Response("too many", { status: 429 });
   }
-
-  const text = await req.text();
-  if (text.length > 2048) return new Response("too large", { status: 413, headers: corsHeaders });
+  const text = await readLimited(req, 2048);
+  if (text === null) return new Response("too large", { status: 413 });
   let b;
-  try { b = JSON.parse(text); } catch { return new Response("bad json", { status: 400, headers: corsHeaders }); }
-  if (!b || typeof b !== "object" || Array.isArray(b)) return new Response("bad json", { status: 400, headers: corsHeaders });
-  if (b.kind !== "session" && b.kind !== "form") return new Response("bad kind", { status: 400, headers: corsHeaders });
-  const parsed = typeof b.ts === "string" ? Date.parse(b.ts) : NaN;
-  const ts = Number.isFinite(parsed) ? new Date(parsed).toISOString() : new Date().toISOString();
-  const m = typeof b.msclkid === "string" && MSCLKID_RE.test(b.msclkid) ? b.msclkid : null;
-
-  if (b.kind === "session") {
-    if (!m) return new Response(null, { status: 204, headers: corsHeaders });
-    const num = last10(b.dni_number);
-    if (num) {
-      await env.OCI.put(`dni:${num}:${Date.now()}:${crypto.randomUUID().slice(0, 8)}`,
-                        "", { metadata: { m, ts }, expirationTtl: TTL_DNI });
-    }
-    return new Response(null, { status: 204, headers: corsHeaders });
+  try { b = JSON.parse(text); } catch { return new Response("bad json", { status: 400 }); }
+  if (!b || typeof b !== "object" || Array.isArray(b)) return new Response("bad json", { status: 400 });
+  if (b.kind !== "session" && b.kind !== "form") return new Response("bad kind", { status: 400 });
+  if (typeof b.event_id !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(b.event_id))
+    return new Response("bad event id", { status: 400 });
+  for (const field of ["email", "phone", "dni_number"]) {
+    if (b[field] != null && typeof b[field] !== "string")
+      return new Response("bad contact type", { status: 400 });
   }
-
-  // form beacon — always record (capture-rate denominator), bind identities only when msclkid present
-  const meta = { m, ts };
-  await env.OCI.put(`form:${Date.now()}:${crypto.randomUUID().slice(0, 8)}`, "", { metadata: meta, expirationTtl: TTL_ID });
-  if (m) {
+  if (b.msclkid != null && (typeof b.msclkid !== "string" || !MSCLKID_RE.test(b.msclkid)))
+    return new Response("bad click id", { status: 400 });
+  const now = Date.now();
+  const parsed = typeof b.ts === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(b.ts)
+    ? Date.parse(b.ts) : NaN;
+  if (!Number.isFinite(parsed) || parsed > now || parsed < now - TTL_ID * 1000)
+    return new Response("bad timestamp", { status: 400 });
+  const ts = new Date(parsed).toISOString();
+  const m = typeof b.msclkid === "string" && MSCLKID_RE.test(b.msclkid) ? b.msclkid : null;
+  const meta = { event_id: b.event_id, kind: b.kind, m, ts };
+  if (b.kind === "session") {
+    const num = last10(b.dni_number);
+    if (!m || !num) return new Response(null, { status: 204 });
+    meta.dni = num;
+  } else if (m) {
     const ne = normalizeEmail(b.email);
     const np = normalizePhone(b.phone);
+    if (ne) meta.e = await sha256Hex(ne);
+    if (np) meta.p = await sha256Hex(np);
     const p10 = last10(b.phone);
-    if (ne) await env.OCI.put(`id:e:${await sha256Hex(ne)}`, "", { metadata: meta, expirationTtl: TTL_ID });
-    if (np) await env.OCI.put(`id:p:${await sha256Hex(np)}`, "", { metadata: meta, expirationTtl: TTL_ID });
-    if (p10) await env.OCI.put(`id:p10:${p10}`, "", { metadata: meta, expirationTtl: TTL_ID });
+    if (p10) meta.p10 = p10;
   }
-  return new Response(null, { status: 204, headers: corsHeaders });
+  // One append-only record per capture. Never import the old anonymous namespace.
+  // Stable timestamp + payload makes retries idempotent without a read/write race.
+  const id = await sha256Hex(JSON.stringify(meta));
+  await env.OCI.put(`trusted:v2:${id}`, "", {
+    metadata: meta, expirationTtl: b.kind === "session" ? TTL_DNI : TTL_ID,
+  });
+  return new Response(null, { status: 204 });
 }
 
-async function listAll(env, prefix) {
-  const out = [];
-  let cursor;
-  // ponytail: 100 pages = 100k keys, ~7x any legit volume; real fix is a cursor-paged /map
-  for (let page = 0; page < 100; page++) {
-    const p = await env.OCI.list({ prefix, cursor });
-    out.push(...p.keys);
-    if (p.list_complete) return out;
-    cursor = p.cursor;
+async function readLimited(req, limit) {
+  const length = Number(req.headers.get("Content-Length"));
+  if (length > limit) return null;
+  if (!req.body) return "";
+  const reader = req.body.getReader();
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  let size = 0, text = "";
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) return text + decoder.decode();
+      size += value.byteLength;
+      if (size > limit) { await reader.cancel(); return null; }
+      text += decoder.decode(value, { stream: true });
+    }
+  } finally {
+    reader.releaseLock();
   }
-  throw new Error(`listAll: >100 pages for prefix ${prefix}`);
 }
 
 async function exportMap(req, env, url) {
-  if (!bearerOk(req, env)) return new Response("unauthorized", { status: 401 });
+  if (!await bearerOk(req, env)) return new Response("unauthorized", { status: 401 });
   const since = url.searchParams.get("since"); // ISO; optional
   const sinceParsed = since ? Date.parse(since) : NaN;
   const sinceIso = Number.isFinite(sinceParsed) ? new Date(sinceParsed).toISOString() : since;
   const fresh = r => !sinceIso || (r.ts && r.ts >= sinceIso);
   const ids = {}, dni = {}, forms = [];
-  for (const k of await listAll(env, "id:")) {
-    if (k.metadata && k.metadata.m && fresh(k.metadata)) ids[k.name.slice(3)] = k.metadata;
-  }
-  for (const k of await listAll(env, "dni:")) {
-    if (k.metadata && fresh(k.metadata)) {
-      const num = k.name.split(":")[1];
-      (dni[num] ||= []).push(k.metadata);
+  const page = await env.OCI.list({ prefix: "trusted:v2:",
+    cursor: url.searchParams.get("cursor") || undefined, limit: 1000 });
+  if (!page.list_complete && !page.cursor) throw new Error("incomplete capture listing");
+  for (const k of page.keys) {
+    const meta = k.metadata;
+    if (!meta || !fresh(meta)) continue;
+    const binding = { m: meta.m, ts: meta.ts };
+    if (meta.kind === "form") {
+      forms.push(binding);
+      if (meta.m) {
+        for (const field of ["e", "p", "p10"]) {
+          if (meta[field]) (ids[`${field}:${meta[field]}`] ||= []).push(binding);
+        }
+      }
+    } else if (meta.kind === "session" && meta.dni) {
+      (dni[meta.dni] ||= []).push(binding);
     }
   }
-  for (const k of await listAll(env, "form:")) {
-    if (k.metadata && fresh(k.metadata)) forms.push(k.metadata);
-  }
-  return Response.json({ ids, dni, forms });
+  return Response.json({ schema_version: 2, ids, dni, forms, next_cursor: page.list_complete ? null : page.cursor });
 }
 
 async function putFile(req, env, name) {
-  if (!bearerOk(req, env)) return new Response("unauthorized", { status: 401 });
-  const body = await req.text();
-  if (body.length > 2 * 1024 * 1024) return new Response("too large", { status: 413 });
+  if (!await bearerOk(req, env)) return new Response("unauthorized", { status: 401 });
+  const body = await readLimited(req, 2 * 1024 * 1024);
+  if (body === null) return new Response("too large", { status: 413 });
   // KV put is atomic per key — a GET sees old or new, never a torn write
   await env.OCI.put(`file:${name}`, body);
   await env.OCI.put(`filets:${name}`, new Date().toISOString());
@@ -144,7 +173,7 @@ async function getFile(req, env, name) {
     return new Response("unauthorized", { status: 401, headers: { "WWW-Authenticate": 'Basic realm="oci"' } });
   const auth = req.headers.get("Authorization") || "";
   const expected = "Basic " + btoa(`${env.FILE_USER}:${env.FILE_PASS}`);
-  if (auth !== expected)
+  if (!await secretMatches(auth, expected))
     return new Response("unauthorized", { status: 401, headers: { "WWW-Authenticate": 'Basic realm="oci"' } });
   const ts = await env.OCI.get(`filets:${name}`);
   const body = await env.OCI.get(`file:${name}`);

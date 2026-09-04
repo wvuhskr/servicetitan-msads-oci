@@ -16,7 +16,8 @@ enabled = true
 binding = "OCI"
 id = "YOUR_KV_NAMESPACE_ID"   # wrangler kv namespace create OCI
 
-# Optional per-IP rate limit on the beacon endpoint (Workers paid plan). Delete if unavailable.
+# Optional per-IP rate limit on authenticated server capture (Workers paid plan). Delete if unavailable.
+# A single booking server shares this limit across all its submissions.
 [[unsafe.bindings]]
 name = "RL"
 type = "ratelimit"

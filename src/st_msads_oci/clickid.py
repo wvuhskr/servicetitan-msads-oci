@@ -1,13 +1,14 @@
 """Join ServiceTitan conversion rows to captured msclkids via the Worker's KV export."""
 import json
-import re
 import ssl
 import urllib.request
+import urllib.parse
 from datetime import timedelta
 from pathlib import Path
 
 import certifi
 
+from .normalize import last10
 from .rows import GOAL_BOOKED_JOB, GOAL_BOOKED_JOB_CALL, Dropped, parse_utc
 
 # ponytail: window is NOT the binding constraint on call-tier joins for ordinary rows — the
@@ -31,11 +32,31 @@ PROXIMITY_S = 120
 
 def fetch_map(base_url, bearer, timeout=30):
     """Raises on any failure — the caller must abort the run rather than build empty Click Ids."""
-    req = urllib.request.Request(base_url.rstrip("/") + "/map",
-                                 headers={"Authorization": f"Bearer {bearer}", "User-Agent": "servicetitan-msads-oci/1.0"})
+    result = {"ids": {}, "dni": {}, "forms": []}
+    cursor, seen = None, set()
     ctx = ssl.create_default_context(cafile=certifi.where())
-    with urllib.request.urlopen(req, timeout=timeout, context=ctx) as r:
-        return json.loads(r.read().decode("utf-8"))
+    while True:
+        url = base_url.rstrip("/") + "/map"
+        if cursor:
+            url += "?" + urllib.parse.urlencode({"cursor": cursor})
+        req = urllib.request.Request(url, headers={"Authorization": f"Bearer {bearer}",
+                                                   "User-Agent": "servicetitan-msads-oci/1.0"})
+        with urllib.request.urlopen(req, timeout=timeout, context=ctx) as r:
+            page = json.loads(r.read().decode("utf-8"))
+        if page.get("schema_version") != 2 or "next_cursor" not in page:
+            raise ValueError("Worker must serve authenticated capture schema version 2")
+        for group in ("ids", "dni"):
+            for key, bindings in page[group].items():
+                if not isinstance(bindings, list):
+                    raise ValueError("invalid capture binding list")
+                result[group].setdefault(key, []).extend(bindings)
+        result["forms"].extend(page["forms"])
+        cursor = page["next_cursor"]
+        if cursor is None:
+            return result
+        if not isinstance(cursor, str) or not cursor or cursor in seen:
+            raise ValueError("invalid or repeated Worker pagination cursor")
+        seen.add(cursor)
 
 
 def publish_file(base_url, bearer, name, path, timeout=30):
@@ -53,22 +74,31 @@ def publish_file(base_url, bearer, name, path, timeout=30):
 
 def _last10(phones):
     for p in phones or []:
-        d = re.sub(r"\D", "", p or "")
-        if len(d) >= 10:
-            return d[-10:]
+        d = last10(p)
+        if d:
+            return d
     return None
 
 
 def find_msclkid(row, mapping, calls_by_id):
     """Return (msclkid|None, source|None, withhold_reason|None). First match wins; ambiguity fails closed."""
     ids = mapping.get("ids", {})
-    if row.email_hash and "e:" + row.email_hash in ids:
-        return ids["e:" + row.email_hash]["m"], "email", None
-    if row.phone_hash and "p:" + row.phone_hash in ids:
-        return ids["p:" + row.phone_hash]["m"], "phone", None
     p10 = _last10(row.raw_phones)
-    if p10 and "p10:" + p10 in ids:
-        return ids["p10:" + p10]["m"], "phone10", None
+    for key, source in (("e:" + row.email_hash if row.email_hash else None, "email"),
+                        ("p:" + row.phone_hash if row.phone_hash else None, "phone"),
+                        ("p10:" + p10 if p10 else None, "phone10")):
+        bindings = ids.get(key, [])
+        if isinstance(bindings, dict):  # trusted local maps from older releases
+            bindings = [bindings]
+        candidates = set()
+        for binding in bindings:
+            captured = parse_utc(binding["ts"])
+            if captured <= row.ts <= captured + timedelta(days=90):
+                candidates.add(binding["m"])
+        if len(candidates) > 1:
+            return None, None, "identity_ambiguous"
+        if candidates:
+            return candidates.pop(), source, None
 
     # If row has an identity hash (even unmatched), don't try proximity or call matching.
     # Exceptions: suspect rows recovered via call inference (spec 2026-08-05) and
@@ -83,7 +113,7 @@ def find_msclkid(row, mapping, calls_by_id):
         call = calls_by_id.get(row.lead_call_id)
         if call and call.get("direction") == "Inbound" and call.get("to"):
             received = parse_utc(call["receivedOn"])
-            to10 = re.sub(r"\D", "", call["to"])[-10:]
+            to10 = last10(call["to"])
             cands = set()
             for b in mapping.get("dni", {}).get(to10, []):
                 bts = parse_utc(b["ts"])

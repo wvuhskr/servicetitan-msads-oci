@@ -13,6 +13,8 @@ from typing import Protocol
 
 import certifi
 
+from .schema import InputValidationError
+
 
 def _ctx():
     return ssl.create_default_context(cafile=certifi.where())
@@ -52,9 +54,12 @@ class SmtpNotifier:
         msg = EmailMessage()
         msg["Subject"], msg["From"], msg["To"] = subject, self.sender, self.to
         msg.set_content(body)
-        with smtplib.SMTP(self.host, self.port, timeout=30) as s:
-            if self.port != 25:
-                s.starttls()
+        context = _ctx()
+        transport = (smtplib.SMTP_SSL(self.host, self.port, timeout=30, context=context)
+                     if self.port == 465 else smtplib.SMTP(self.host, self.port, timeout=30))
+        with transport as s:
+            if self.port != 465:
+                s.starttls(context=context)
             if self.user:
                 s.login(self.user, self.password)
             s.send_message(msg)
@@ -112,11 +117,22 @@ def build_notifiers(settings, env):
     return out
 
 
+def failure_summary(exc):
+    """Do not serialize arbitrary exception messages, URLs, response bodies or traces."""
+    if isinstance(exc, InputValidationError):
+        return str(exc)
+    result = type(exc).__name__
+    status = getattr(exc, "status", None) or getattr(exc, "code", None)
+    if type(status) is int and 100 <= status <= 599:
+        result += f" (HTTP {status})"
+    return result + ": operation failed; sensitive error details omitted."
+
+
 def notify_all(notifiers, subject, body):
     errors = []
     for n in notifiers:
         try:
             n.send(subject, body)
         except Exception as exc:  # a dead notifier must not kill the run
-            errors.append(f"{type(n).__name__}: {exc}")
+            errors.append(f"{type(n).__name__}: {failure_summary(exc)}")
     return errors

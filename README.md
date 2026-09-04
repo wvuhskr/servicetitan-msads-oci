@@ -1,5 +1,7 @@
 # ServiceTitan → Microsoft Ads Offline Conversion Uploader
 
+Version 2 requires a trusted booking-server integration. Browser-only capture from v1 is no longer accepted. Read [the upgrade instructions](docs/security-upgrade.md) before deploying.
+
 **Unofficial. Not affiliated with, endorsed by, or sponsored by ServiceTitan or Microsoft.** This is an independent, third-party tool that integrates with the ServiceTitan and Microsoft Advertising APIs through their public interfaces. "ServiceTitan," "Microsoft Advertising," "Bing," and other product names are trademarks of their respective owners.
 
 **ServiceTitan already sends your closed-job revenue back to Google Ads. It sends Microsoft/Bing nothing.**
@@ -8,9 +10,9 @@ If you run Microsoft Ads for a ServiceTitan shop, Microsoft's automated bidding 
 
 ## What it does
 
-`servicetitan-msads-oci` sends your ServiceTitan booked and completed jobs to Microsoft Advertising as offline conversions, matched back to the ad click that produced them. A small Cloudflare Worker (a script that runs on Cloudflare's edge network, not your own server) captures each visitor's Microsoft Click ID (`msclkid`) when they land on your site from an ad, and a scheduled Python pull later joins that click ID to whatever ServiceTitan booking, completed job, or booked call it produced. Microsoft uses the result to credit the conversion back to the original ad and to feed value-based Smart Bidding (Microsoft's automated bidding that optimizes toward conversion value, not just conversion count).
+`servicetitan-msads-oci` sends your ServiceTitan booked and completed jobs to Microsoft Advertising as offline conversions, matched back to the ad click that produced them. A small Cloudflare Worker (a script that runs on Cloudflare's edge network, not your own server) accepts verified click-to-customer records from your trusted booking server, and a scheduled Python pull later joins that click ID to whatever ServiceTitan booking, completed job, or booked call it produced. Microsoft uses the result to credit the conversion back to the original ad and to feed value-based Smart Bidding (Microsoft's automated bidding that optimizes toward conversion value, not just conversion count).
 
-**Flow:** ad click -> Worker stores msclkid -> (days later) ST job booked and completed -> Python pull -> engine joins and builds CSV -> Worker hosts the file -> Microsoft scheduled import pulls -> conversion credited -> triage reports match rate.
+**Flow:** ad click -> trusted booking server verifies the customer/session -> Worker stores the binding -> (days later) ST job booked and completed -> Python pull -> engine joins and builds CSV -> Worker hosts the file -> Microsoft scheduled import pulls -> conversion credited -> triage reports match rate.
 
 ## Why this exists
 
@@ -22,6 +24,7 @@ Sources: [How revenue import works in Ads Optimizer](https://help.servicetitan.c
 
 This is real setup work, not a five-minute install. Budget time for a one-time Cloudflare deploy, a ServiceTitan API app registration, and Microsoft goal setup — the ongoing work after that is automated.
 
+- A trusted booking-server integration that verifies customer/session bindings before recording click attribution. See [capture](docs/capture.md).
 - A Cloudflare account (the free plan works; the optional per-IP rate limit on the capture endpoint needs a paid Workers plan — see `worker/README.md`).
 - A ServiceTitan API application (register at developer.servicetitan.io) with read scopes for **CRM**, **JPM** (Job & Project Management), **Accounting**, **Telecom**, and **Marketing**.
 - A Microsoft Ads account with the three offline-conversion goals created and a scheduled file import configured — `docs/setup.md` walks through both.
@@ -35,7 +38,7 @@ This is real setup work, not a five-minute install. Budget time for a one-time C
    pip install -e .
    ```
 2. **Terminal, inside the `worker/` folder** — deploy the Cloudflare Worker that captures click IDs and hosts the two upload files. Full steps: [`worker/README.md`](worker/README.md).
-3. **Your website's HTML, or a tag manager (e.g. Google Tag Manager)** — paste the reference snippet from [`worker/beacon.js`](worker/beacon.js), with its `WORKER` constant changed to your deployed Worker's URL. See [`docs/capture.md`](docs/capture.md) for what it does.
+3. **Your website's HTML, or a tag manager (e.g. Google Tag Manager)** — paste the reference snippet from [`worker/beacon.js`](worker/beacon.js), to remember the click cookie. Connect your verified booking server to the authenticated capture endpoint; the browser snippet alone does not establish customer bindings. See [`docs/capture.md`](docs/capture.md) for what it does.
 4. **Terminal, in the repo root** — create your local config files from the templates, then edit both with your values (see Config reference below):
    ```bash
    cp accounts.yaml.example accounts.yaml
@@ -119,14 +122,14 @@ Run the pull and the build back to back, at least once a day — Microsoft's sch
 | `ST_CLIENT_ID`, `ST_CLIENT_SECRET`, `ST_APP_KEY` | Your ServiceTitan API application's credentials. Read-only scopes are enough. |
 | `OCI_WORKER_BEARER` | Bearer token the engine uses to call the Worker's `/map` and `/f/...` endpoints — must match the `OCI_BEARER` secret you set on the Worker with `wrangler secret put`. |
 | `NOTIFY_WEBHOOK_URL` | Slack/Teams incoming webhook URL. Only used if `accounts.yaml` has a `notifications` entry with `type: webhook`. |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TO` | Any SMTP server. `SMTP_PORT` defaults to 587. Only used with a `type: smtp` notifier. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TO` | A mail server with verified TLS encryption. Port 465 uses implicit TLS; other ports require STARTTLS. `SMTP_PORT` defaults to 587. Only used with a `type: smtp` notifier. |
 | `GRAPH_TENANT_ID`, `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_SENDER`, `GRAPH_TO` | Microsoft 365 Graph app credentials, for run-summary emails via Graph's `sendMail`. Only used with a `type: graph` notifier. |
 
 ## Roadmap
 
 Out of scope for v1, and candidates for v2, ordered by how much each would widen adoption:
 
-1. User-defined conversion types — today the three goal types (`completed_jobs`, `booked_web`, `booked_call`) are hardcoded in the engine; letting `accounts.yaml` declare additional goal types is real backlog, not v1 scope. This is the biggest blocker to a shop whose Microsoft goals differ from the built-in three adopting the tool as-is.
+1. User-defined conversion types — today the three goal types (`completed_jobs`, `booked_web`, `booked_call`) are hardcoded in the engine; letting `accounts.yaml` declare additional goal types is real backlog, not current scope. This is the biggest blocker to a shop whose Microsoft goals differ from the built-in three adopting the tool as-is.
 2. A first-class ServiceTitan client — the bundled pull (`pull/pull_servicetitan.py`) is a reference implementation, not hardened for every tenant configuration. Hardening it moves the pull from "a developer can adapt this" to "a shop runs it as-is."
 3. Direct Microsoft API push, removing the scheduled-import setup step and the need to host the two files — a simpler one-time setup and near-real-time uploads.
 4. An alternate capture path that writes `msclkid` directly into a ServiceTitan field, letting a shop drop Cloudflare from the stack. Together with the direct API push above, it removes the Cloudflare Worker requirement completely.
@@ -136,3 +139,7 @@ Out of scope for v1, and candidates for v2, ordered by how much each would widen
 ## License
 
 MIT — see [`LICENSE`](LICENSE).
+
+## v2.0.0 security upgrade
+
+Existing installations must follow [the coordinated upgrade notes](docs/security-upgrade.md). Capture now requires a server-held secret, older anonymous capture records are excluded, and unsupported email scripts return no email identity under the [shared normalization policy](docs/normalization.md).

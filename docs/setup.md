@@ -6,7 +6,7 @@ Long-form version of the README's Quick start, with the two parts that need more
 
 Terminal, inside the `worker/` folder. Full instructions, including what every `wrangler.toml` value means: [`worker/README.md`](../worker/README.md).
 
-Short version: copy `wrangler.toml.example` to `wrangler.toml` and fill in your Cloudflare account ID and the subdomain you want the Worker to answer on; create a KV (Cloudflare's key-value store) namespace and paste its ID in; set three secrets (`OCI_BEARER`, `FILE_USER`, `FILE_PASS`); deploy. Keep the Worker's URL and the three secret values handy — you'll need them in steps 4 and 7 below.
+Short version: copy `wrangler.toml.example` to `wrangler.toml` and fill in your Cloudflare account ID and the subdomain you want the Worker to answer on; create a KV (Cloudflare's key-value store) namespace and paste its ID in; set four secrets (`CAPTURE_BEARER`, `OCI_BEARER`, `FILE_USER`, `FILE_PASS`); deploy. Keep the Worker's URL and the engine/file secret values handy — you'll need them in steps 4 and 7 below.
 
 ## 2. Register a ServiceTitan API application
 
@@ -22,7 +22,7 @@ Note the client ID, client secret, and app key (ServiceTitan calls this the "ST-
 
 ## 3. Add the beacon to your site
 
-Your website's HTML template, or a tag manager (e.g. Google Tag Manager). Paste the snippet from [`worker/beacon.js`](../worker/beacon.js), changing its `WORKER` constant to your Worker's URL from step 1. See [`docs/capture.md`](capture.md) for what this does and how the matching works.
+Your website's HTML template, or a tag manager (e.g. Google Tag Manager). Paste the snippet from [`worker/beacon.js`](../worker/beacon.js), to remember the click cookie. Connect your verified booking server to the authenticated capture endpoint using `CAPTURE_BEARER`; never place that secret in the snippet. See [`docs/capture.md`](capture.md) for what this does and how the matching works.
 
 ## 4. Local config files
 
@@ -88,3 +88,5 @@ Save both. From here on Microsoft pulls on its own schedule — there's nothing 
 - `output/summary-latest.json` should show a non-zero `tier_a` or `tier_b` count once you have real bookings/jobs on the configured campaign category.
 - Give it a day or two for Microsoft's first scheduled pull, then check the goal's conversion count in Microsoft Ads — using a report date range that covers when the underlying ad clicks happened, not just "today". See [`docs/click-date-credit.md`](click-date-credit.md) for why that matters.
 - Download Microsoft's offline-conversion result file (from the same Uploads area) into `results/inbox/`, or just your normal Downloads folder, and run `st-msads-oci build` again — it gets parsed automatically and turns into a row in `match_rate_history.csv`.
+
+For an existing installation, complete [the coordinated security upgrade](security-upgrade.md) before resuming scheduled imports.

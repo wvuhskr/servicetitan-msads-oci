@@ -4,14 +4,13 @@ import json
 import os
 import sys
 import re
-import traceback
 from datetime import timedelta, timezone
 from pathlib import Path
 
 from ..ledger import Ledger
-from ..notify import build_notifiers, notify_all
+from ..notify import build_notifiers, notify_all, failure_summary
 from ..rows import GOAL_BOOKED_JOB, GOAL_BOOKED_JOB_CALL, GOAL_COMPLETED_JOBS
-from ..schema import validate_input
+from ..schema import validate_input, InputValidationError
 from .st_client import ServiceTitanClient, ServiceTitanError
 
 ENDPOINTS = {
@@ -67,7 +66,7 @@ class _Contacts:
                 elif "Phone" in t:
                     phones.append(v)
         except ServiceTitanError as e:
-            self.log(f"contacts for customer {customer_id} failed, leaving blank: {e}")
+            self.log(f"contacts lookup failed, leaving blank: {failure_summary(e)}")
         self.memo[customer_id] = (name, email, phones)
         return self.memo[customer_id]
 
@@ -146,7 +145,7 @@ def write_payload_atomic(payload, out_path):
     payload = {k: v for k, v in payload.items() if k != "_enriched"}
     errors = validate_input(payload)
     if errors:
-        raise ValueError("input payload is invalid:\n  " + "\n  ".join(errors[:20]))
+        raise InputValidationError("input payload is invalid:\n  " + "\n  ".join(errors[:20]))
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     tmp = out_path.with_suffix(".tmp")
@@ -154,7 +153,7 @@ def write_payload_atomic(payload, out_path):
     os.replace(tmp, out_path)
 
 
-def run_pull(settings, env, project_dir, out_path, now):
+def run_pull(settings, env, project_dir, out_path, now, *, notify=True):
     try:
         creds = {}
         for key in ("ST_CLIENT_ID", "ST_CLIENT_SECRET", "ST_APP_KEY"):
@@ -172,8 +171,9 @@ def run_pull(settings, env, project_dir, out_path, now):
                           "calls": len(payload["calls"]), "campaigns": len(payload["campaigns"]),
                           "enriched": payload["_enriched"], "out": str(out_path)}))
         return 0
-    except Exception:
-        tb = traceback.format_exc()
+    except Exception as exc:
+        tb = failure_summary(exc)
         sys.stderr.write(tb)
-        notify_all(build_notifiers(settings, env), f"ServiceTitan pull FAILED — {now:%Y-%m-%d}", tb)
+        if notify:
+            notify_all(build_notifiers(settings, env), f"ServiceTitan pull FAILED — {now:%Y-%m-%d}", tb)
         return 2

@@ -120,3 +120,15 @@ def test_empty_servicetitan_email_normalizes_to_null(tmp_path):
     calls = {x["id"]: x for x in p["calls"]}
     assert calls[700]["email"] is None
     write_payload_atomic(p, tmp_path / "x.json")  # must not raise ValueError from schema
+
+
+def test_contact_lookup_failure_does_not_log_provider_response_body():
+    r = routes()
+    def rejected(params):
+        raise ServiceTitanError(500, '/contacts', b'private@example.com SUPER_SECRET')
+    r['/crm/v2/tenant/{tenant}/customers/77/contacts'] = rejected
+    logs = []
+    pull_all(FakeClient(r), make_settings(), Ledger(), NOW, log=logs.append)
+    assert 'private@example.com' not in '\n'.join(logs)
+    assert 'SUPER_SECRET' not in '\n'.join(logs)
+    assert any('500' in line for line in logs)
