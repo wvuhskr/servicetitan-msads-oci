@@ -7,7 +7,7 @@
   {
     "kind": "email",
     "raw": "  J.o.h.n.Doe@Gmail.com ",
-    "normalized": "john@gmail.com"
+    "normalized": "johndoe@gmail.com"
   },
   {
     "kind": "email",
