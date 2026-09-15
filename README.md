@@ -29,7 +29,7 @@ This is real setup work, not a five-minute install. Budget time for a one-time C
 - A ServiceTitan API application (register at developer.servicetitan.io) with read scopes for **CRM**, **JPM** (Job & Project Management), **Accounting**, **Telecom**, and **Marketing**.
 - A Microsoft Ads account with the three offline-conversion goals created and a scheduled file import configured — `docs/setup.md` walks through both.
 - Python 3.11 or newer.
-- Node.js 20 or newer — only needed once, to deploy the Cloudflare Worker.
+- Node.js 22 or newer (CI tests on 24; Node 20 is end-of-life) — only needed once, to deploy the Cloudflare Worker.
 
 ## Quick start
 
