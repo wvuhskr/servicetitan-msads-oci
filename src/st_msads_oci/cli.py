@@ -6,7 +6,7 @@ from pathlib import Path
 
 from .build import build
 from .config import load_env, load_settings
-from .notify import build_notifiers, notify_all, failure_summary
+from .notify import failure_summary, notify_all, safe_build_notifiers
 from .rows import parse_utc
 
 
@@ -38,8 +38,11 @@ def main(argv=None):
     now = datetime.now(timezone.utc)
 
     if args.cmd == "alert":
-        errs = [] if args.no_notify else notify_all(build_notifiers(settings, env),
-                                                    f"MS Ads offline conversions FAILED — {now:%Y-%m-%d}", args.message)
+        errs = []
+        if not args.no_notify:
+            # A misconfigured notifier is reported as an error (exit 2), never a crash.
+            notifiers, errs = safe_build_notifiers(settings, env)
+            errs += notify_all(notifiers, f"MS Ads offline conversions FAILED — {now:%Y-%m-%d}", args.message)
         print(json.dumps({"alert": args.message, "notify_errors": errs}))
         return 2 if errs else 0
 
@@ -54,7 +57,11 @@ def main(argv=None):
     except Exception as exc:
         tb = failure_summary(exc)
         if not args.no_notify:
-            notify_all(build_notifiers(settings, env), f"MS Ads offline conversions FAILED — {now:%Y-%m-%d}", tb)
+            # Reporting a failed build must not itself crash on a misconfigured notifier.
+            notifiers, cfg_errs = safe_build_notifiers(settings, env)
+            for e in cfg_errs:
+                print(e, file=sys.stderr)
+            notify_all(notifiers, f"MS Ads offline conversions FAILED — {now:%Y-%m-%d}", tb)
         print(tb, file=sys.stderr)
         return 2
 

@@ -45,6 +45,7 @@ def test_notifier_error_details_are_not_serialized_in_summary():
 
 
 def test_pull_notification_preference_and_error_privacy(monkeypatch, tmp_path, capsys):
+    from st_msads_oci import notify
     from st_msads_oci.pull import servicetitan
     for key in ['ST_CLIENT_ID', 'ST_CLIENT_SECRET', 'ST_APP_KEY']:
         monkeypatch.setenv(key, 'fake-test-value')
@@ -54,7 +55,9 @@ def test_pull_notification_preference_and_error_privacy(monkeypatch, tmp_path, c
     sent = []
     class CapturedNotification:
         def send(self, subject, body): sent.append((subject, body))
-    monkeypatch.setattr(servicetitan, 'build_notifiers', lambda *a: [CapturedNotification()])
+    # Construction now goes through notify.safe_build_notifiers -> notify.build_notifiers;
+    # patch the real seam so the wrapper is exercised too.
+    monkeypatch.setattr(notify, 'build_notifiers', lambda *a: [CapturedNotification()])
     args = ['pull', *config(tmp_path)]
     assert main([*args, '--no-notify']) == 2
     assert sent == []

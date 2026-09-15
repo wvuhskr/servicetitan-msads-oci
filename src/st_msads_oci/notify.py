@@ -136,3 +136,17 @@ def notify_all(notifiers, subject, body):
         except Exception as exc:  # a dead notifier must not kill the run
             errors.append(f"{type(n).__name__}: {failure_summary(exc)}")
     return errors
+
+
+def safe_build_notifiers(settings, env):
+    """build_notifiers(), but a misconfigured entry becomes a reported error instead of an
+    exception. Callers sit either in front of the ledger save (build) or inside failure
+    handlers (cli, pull) — construction must never raise there. Known triggers: a bare
+    string where a {type: ...} mapping is expected, or a non-numeric SMTP_PORT.
+    Falls back to stdout alone so the run summary is still printed; notifiers built before
+    the bad entry are dropped for this run and the error string says what to fix. Uses
+    failure_summary() so no config or exception text leaks."""
+    try:
+        return build_notifiers(settings, env), []
+    except Exception as exc:  # a misconfigured notifier must not kill the run either
+        return [StdoutNotifier()], [f"build_notifiers: {failure_summary(exc)}"]

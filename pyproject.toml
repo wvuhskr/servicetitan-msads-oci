@@ -1,6 +1,6 @@
 [project]
 name = "servicetitan-msads-oci"
-version = "2.0.0"
+version = "2.0.1"
 description = "Send ServiceTitan booked/completed jobs to Microsoft Ads as offline conversions, matched to the originating ad click (msclkid)."
 readme = "README.md"
 license = { text = "MIT" }

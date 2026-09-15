@@ -14,7 +14,7 @@ from .clickid import fetch_map, publish_file, tier_rows
 from .dedupe import dedupe
 from .filter import attach_hashes, filter_rows
 from .ledger import Ledger
-from .notify import build_notifiers, notify_all
+from .notify import notify_all, safe_build_notifiers
 from .rows import GOAL_COMPLETED_JOBS, project_rows_from_payload, rows_from_payload
 from .schema import validate_input, InputValidationError
 from .triage import run_triage
@@ -104,9 +104,12 @@ def build(project_dir: Path, input_path: Path, settings, env: dict, now: datetim
             body_lines.append("Projects:")
             body_lines += [f"  {f}" for f in proj_findings]
         body_lines.append("Files published to the Worker; Microsoft pulls daily. No manual upload.")
-        notify_errors = notify_all(build_notifiers(settings, env),
-                                   f"MS Ads offline conversions — {today} (A:{len(tier_a)} B:{len(tier_b)} W:{len(withheld)})",
-                                   "\n".join(body_lines))
+        # Construction is guarded too: a misconfigured notifier must not skip the ledger
+        # save below (the CSVs are already published — unrecorded rows would re-emit).
+        notifiers, notify_errors = safe_build_notifiers(settings, env)
+        notify_errors += notify_all(notifiers,
+                                    f"MS Ads offline conversions — {today} (A:{len(tier_a)} B:{len(tier_b)} W:{len(withheld)})",
+                                    "\n".join(body_lines))
 
     for r in tier_a:
         ledger.add_row(r, today, tier="A")

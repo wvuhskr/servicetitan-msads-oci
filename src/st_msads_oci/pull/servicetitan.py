@@ -8,7 +8,7 @@ from datetime import timedelta, timezone
 from pathlib import Path
 
 from ..ledger import Ledger
-from ..notify import build_notifiers, notify_all, failure_summary
+from ..notify import failure_summary, notify_all, safe_build_notifiers
 from ..rows import GOAL_BOOKED_JOB, GOAL_BOOKED_JOB_CALL, GOAL_COMPLETED_JOBS
 from ..schema import validate_input, InputValidationError
 from .st_client import ServiceTitanClient, ServiceTitanError
@@ -175,5 +175,9 @@ def run_pull(settings, env, project_dir, out_path, now, *, notify=True):
         tb = failure_summary(exc)
         sys.stderr.write(tb)
         if notify:
-            notify_all(build_notifiers(settings, env), f"ServiceTitan pull FAILED — {now:%Y-%m-%d}", tb)
+            # Reporting a failed pull must not itself crash on a misconfigured notifier.
+            notifiers, cfg_errs = safe_build_notifiers(settings, env)
+            for e in cfg_errs:
+                sys.stderr.write(f"\n{e}")
+            notify_all(notifiers, f"ServiceTitan pull FAILED — {now:%Y-%m-%d}", tb)
         return 2
